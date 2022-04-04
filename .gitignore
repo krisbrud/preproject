@@ -2,4 +2,9 @@
 assisted-baselines/
 gym-auv/
 gym-track2d/
+
+assisted_baselines/
+gym_auv/
+gym_track2d/
+
 __pycache__/
