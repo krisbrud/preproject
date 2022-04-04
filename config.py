@@ -52,21 +52,19 @@ _C.hyperparam.verbose = 2
 # Configuration for assistants, masks and schedules
 _C.assistance = CN()
 _C.assistance.masks = CN()
+AGENT_FLAG = True 
+ASSISTANT_FLAG = False
 # Define masks
-# `assistant_control` and `agent_control` are NOT config variables, but
-# define the literals that the mask uses.
-assistant_control = True 
-agent_control = False
-# _C.assistance.masks.surge_only = 
+# Masks are named after the actuators that are controlled by the RL agent
 # (surge, rudder, elevator)
-[use_agent,        use_assistant,     use_assistant]
-[use_agent,        use_agent,         use_assistant]
-[use_agent,        use_agent,         use_agent]
-[use_agent,        use_assistant,     use_agent]
-[use_assistant,    use_agent,         use_assistant]
-[use_assistant,    use_assistant,     use_agent]
-[use_assistant,    use_agent,         use_agent]
-[use_assistant,    use_assistant,     use_assistant]
+_C.assistance.masks.surge_only =                [AGENT_FLAG,        ASSISTANT_FLAG,     ASSISTANT_FLAG]
+_C.assistance.masks.surge_and_rudder =          [AGENT_FLAG,        AGENT_FLAG,         ASSISTANT_FLAG]
+_C.assistance.masks.agent_only =                [AGENT_FLAG,        AGENT_FLAG,         AGENT_FLAG]
+_C.assistance.masks.surge_and_elevator =        [AGENT_FLAG,        ASSISTANT_FLAG,     AGENT_FLAG]
+_C.assistance.masks.rudder_only =               [ASSISTANT_FLAG,    AGENT_FLAG,         ASSISTANT_FLAG]
+_C.assistance.masks.elevator_only =             [ASSISTANT_FLAG,    ASSISTANT_FLAG,     AGENT_FLAG]
+_C.assistance.masks.rudder_and_elevator =       [ASSISTANT_FLAG,    AGENT_FLAG,         AGENT_FLAG]
+_C.assistance.masks.assistant_only =            [ASSISTANT_FLAG,    ASSISTANT_FLAG,     ASSISTANT_FLAG]
 
 ## ENVIRONMENT CONFIG
 _C.env = CN()
