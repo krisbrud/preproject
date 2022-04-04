@@ -57,14 +57,18 @@ ASSISTANT_FLAG = False
 # Define masks
 # Masks are named after the actuators that are controlled by the RL agent
 # (surge, rudder, elevator)
-_C.assistance.masks.surge_only =                [AGENT_FLAG,        ASSISTANT_FLAG,     ASSISTANT_FLAG]
-_C.assistance.masks.surge_and_rudder =          [AGENT_FLAG,        AGENT_FLAG,         ASSISTANT_FLAG]
-_C.assistance.masks.agent_only =                [AGENT_FLAG,        AGENT_FLAG,         AGENT_FLAG]
-_C.assistance.masks.surge_and_elevator =        [AGENT_FLAG,        ASSISTANT_FLAG,     AGENT_FLAG]
-_C.assistance.masks.rudder_only =               [ASSISTANT_FLAG,    AGENT_FLAG,         ASSISTANT_FLAG]
-_C.assistance.masks.elevator_only =             [ASSISTANT_FLAG,    ASSISTANT_FLAG,     AGENT_FLAG]
-_C.assistance.masks.rudder_and_elevator =       [ASSISTANT_FLAG,    AGENT_FLAG,         AGENT_FLAG]
-_C.assistance.masks.assistant_only =            [ASSISTANT_FLAG,    ASSISTANT_FLAG,     ASSISTANT_FLAG]
+mask_surge_only =                [AGENT_FLAG,        ASSISTANT_FLAG,     ASSISTANT_FLAG]
+mask_surge_and_rudder =          [AGENT_FLAG,        AGENT_FLAG,         ASSISTANT_FLAG]
+mask_agent_only =                [AGENT_FLAG,        AGENT_FLAG,         AGENT_FLAG]
+mask_surge_and_elevator =        [AGENT_FLAG,        ASSISTANT_FLAG,     AGENT_FLAG]
+mask_rudder_only =               [ASSISTANT_FLAG,    AGENT_FLAG,         ASSISTANT_FLAG]
+mask_elevator_only =             [ASSISTANT_FLAG,    ASSISTANT_FLAG,     AGENT_FLAG]
+mask_rudder_and_elevator =       [ASSISTANT_FLAG,    AGENT_FLAG,         AGENT_FLAG]
+mask_assistant_only =            [ASSISTANT_FLAG,    ASSISTANT_FLAG,     ASSISTANT_FLAG]
+
+_C.assistance.checkpoints = {
+    0: mask_elevator_only
+}
 
 ## ENVIRONMENT CONFIG
 _C.env = CN()
