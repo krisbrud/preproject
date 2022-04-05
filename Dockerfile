@@ -8,7 +8,7 @@ FROM stablebaselines/rl-baselines3-zoo-cpu
 # ENV PYTHONUNBUFFERED=1
 
 # Install pip requirements
-COPY gym-auv/requirements.txt .
+COPY requirements.txt .
 RUN python -m pip install -r requirements.txt
 
 WORKDIR /app
