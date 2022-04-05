@@ -70,6 +70,25 @@ _C.assistance.checkpoints = {
     0: mask_elevator_only
 }
 
+# Define parameters for PID controllers
+_C.assistance.pid = CN()
+TODO = 123
+_C.assistance.pid.surge = CN()
+_C.assistance.pid.surge.Kp = TODO
+_C.assistance.pid.surge.Ki = TODO
+_C.assistance.pid.surge.Kd = TODO
+
+_C.assistance.pid.rudder = CN()
+_C.assistance.pid.rudder.Kp = TODO
+_C.assistance.pid.rudder.Ki = TODO
+_C.assistance.pid.rudder.Kd = TODO
+
+_C.assistance.pid.elevator = CN()
+_C.assistance.pid.elevator.Kp = TODO
+_C.assistance.pid.elevator.Ki = TODO
+_C.assistance.pid.elevator.Kd = TODO
+
+
 ## ENVIRONMENT CONFIG
 _C.env = CN()
 # Name of gym environment to look up
