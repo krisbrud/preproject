@@ -4,11 +4,12 @@ import glob
 
 from pandas import DataFrame
 from stable_baselines3 import PPO
-from gym_auv.utils.controllers import PI, PID
+# from gym_auv.utils.controllers import PI, PID
+from assisted_baselines.common.assistants.pid import PIController, PIDController
 from utils.plotting import plot_3d, plot_angular_velocity, plot_attitude, plot_control_errors, plot_control_inputs, plot_current_data, plot_velocity
 
-PI = PI()
-PID_cross = PID(Kp=1.8, Ki=0.01, Kd=0.035)
+# PI = PIController()
+# PID_cross = PIDController(Kp=1.8, Ki=0.01, Kd=0.035, timestep=0.1)
 
 def find_tb_logs(dir_to_search):
     tb_log_paths = glob.glob(f"{dir_to_search}/tensorboard/**/events.out.tfevents*")
