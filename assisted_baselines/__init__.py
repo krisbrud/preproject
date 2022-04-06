@@ -1,2 +1,3 @@
-# from assisted_baselines.PPO import AssistedPPO
-# from assisted_baselines.PPO import AssistedPolicy
+from assisted_baselines.PPO import AssistedPPO
+from assisted_baselines.PPO import AssistedPolicy
+from assisted_baselines.common.schedules.checkpoint_schedule import CheckpointSchedule

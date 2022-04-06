@@ -19,8 +19,8 @@ class ActiveActionsMask:
     :param action_space - The gym environment's action space
     :param action_mask - A numpy array with
     """
-    def __init__(self, action_space: gym.spaces.Space, mask: Union[torch.Tensor, np.ndarray]) -> None:
-        self._action_space = action_space
+    def __init__(self, n_actions: int, mask: Union[torch.Tensor, np.ndarray]) -> None:
+        self._n_actions = n_actions
         
         if isinstance(mask, np.ndarray):
             self._mask = torch.Tensor(mask.astype(bool)).type(torch.BoolTensor)
@@ -30,7 +30,7 @@ class ActiveActionsMask:
             raise ArgumentError(f"Expected mask to be numpy ndarray or torch Tensor, but got {type(mask)}!")
 
 
-        if self._action_space.shape != self._mask.shape:
+        if self._mask.shape != (self._n_actions,):
             raise ValueError(f"The shape of the action space: {self._action_space.shape} did not match the shape of the mask: {mask.shape}!")
 
     def mix_np(self, agent_actions: np.ndarray, assistant_actions: np.ndarray):
@@ -55,10 +55,10 @@ class ActiveActionsMask:
         """
 
         # TODO: Check if this crashes with torch shapes/sizes!
-        if agent_actions.shape[-1] != self._action_space.shape[-1]:
+        if agent_actions.shape[-1] != (self._n_actions, ):
             raise ValueError(f"Shape of agent_actions: {agent_actions.shape}" 
                              f"does not match shape of action space {self._action_space.shape}!")
-        if assistant_actions.shape[-1] != self._action_space.shape[-1]:
+        if assistant_actions.shape[-1] != (self._n_actions, ):
             raise ValueError(f"Shape of assistant_actions: {agent_actions.shape}" 
                              f"does not match shape of action space {self._action_space.shape}!")
 
