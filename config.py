@@ -27,11 +27,11 @@ _C.train.total_timesteps = int(30e6)
 _C.train.save_freq = int(100e3)
 # MLFlow Tracking URI for logging metrics and artifacts. 
 # Set to None if it's not going to be used.
-_C.train.mlflow_tracking_uri
+_C.train.mlflow_tracking_uri = "azureml://northeurope.api.azureml.ms/mlflow/v1.0/subscriptions/3165a1c1-fd45-4c8d-938e-0058c823f960/resourceGroups/aml-playground/providers/Microsoft.MachineLearningServices/workspaces/aml-playground"
 # RL Algorithm to use. Currently supports "AssistedPPO", which is implmented in `krisbrud/assisted-baselines`.
 _C.train.algorithm = "AssistedPPO"
 # How many evaluation episodes to run when evaluating the environment
-_C.train.n_eval_episodes
+_C.train.n_eval_episodes = 100
 
 ## ALGORITHM HYPERPARAMETERS
 # Hyperparameters for PPO algorithm
@@ -66,9 +66,9 @@ mask_elevator_only =             [ASSISTANT_FLAG,    ASSISTANT_FLAG,     AGENT_F
 mask_rudder_and_elevator =       [ASSISTANT_FLAG,    AGENT_FLAG,         AGENT_FLAG]
 mask_assistant_only =            [ASSISTANT_FLAG,    ASSISTANT_FLAG,     ASSISTANT_FLAG]
 
-_C.assistance.checkpoints = {
-    0: mask_elevator_only
-}
+_C.assistance.checkpoints = [
+  (0, mask_elevator_only),
+]
 
 # Define parameters for PID controllers
 _C.assistance.pid = CN()
@@ -93,6 +93,7 @@ _C.assistance.pid.elevator.Kd = TODO
 _C.env = CN()
 # Name of gym environment to look up
 _C.env.name = "PathFollowAuv3D-v0"
+_C.env.n_actions = 3
 
 
 
