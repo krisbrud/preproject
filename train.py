@@ -152,7 +152,7 @@ def train():
     num_envs = cfg.train.num_envs
     print("Num envs:", num_envs)
 
-    # env = get_assisted_envs(cfg)
+    env = get_assisted_envs(cfg)
 
     # if num_envs > 1:
     #     env = SubprocVecEnv([
@@ -173,11 +173,11 @@ def train():
     # Initialize a new agent from scratch
     # agent = PPO("MlpPolicy", env, **hyperparams)
 
-    # mask_schedule = get_mask_schedule(cfg)
+    mask_schedule = get_mask_schedule(cfg)
     
-    # agent = AssistedPPO("AssistedPolicy", env, mask_schedule, **hyperparams)
+    agent = AssistedPPO("AssistedPolicy", env, mask_schedule, **hyperparams)
 
-    env, agent = baseline_env_agent(cfg)
+    # env, agent = baseline_env_agent(cfg)
 
     timesteps = cfg.train.total_timesteps
 
