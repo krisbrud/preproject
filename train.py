@@ -168,12 +168,12 @@ def train():
     #                         allow_early_resets=True)
     #     ])
 
-    print(f"env action space {env.action_space}")
+    # print(f"env action space {env.action_space}")
 
     # Initialize a new agent from scratch
     # agent = PPO("MlpPolicy", env, **hyperparams)
 
-    mask_schedule = get_mask_schedule(cfg)
+    # mask_schedule = get_mask_schedule(cfg)
     
     # agent = AssistedPPO("AssistedPolicy", env, mask_schedule, **hyperparams)
 
