@@ -216,7 +216,7 @@ def train():
 
 
     # Evaluate policy and log metrics
-    mean_eval_reward, mean_eval_reward_std = evaluate_policy(agent, env, n_eval_episodes=cfg.n_eval_episodes)
+    mean_eval_reward, mean_eval_reward_std = evaluate_policy(agent, env, n_eval_episodes=cfg.train.n_eval_episodes)
 
 
     # Find the tensorboard log paths, as the filename is somewhat unpredictable
