@@ -154,7 +154,6 @@ class PathColav3d(gym.Env):
         self.axis_equal3d(ax)
         ax.legend(fontsize=14)
         plt.show()
-        a.asjdl
 
     def step(self, action):
         """

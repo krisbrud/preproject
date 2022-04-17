@@ -75,7 +75,7 @@ pid_auv3d_config = {
     "sonar_range": 25,
     "n_obs_errors": 5,
     "n_obs_inputs": 2,
-    "n_actuators": 1,
+    "n_actuators": 3, # [thrust, rudder, elevator]
     "la_dist": 3,
     "accept_rad": 1,
     "n_waypoints": 7,

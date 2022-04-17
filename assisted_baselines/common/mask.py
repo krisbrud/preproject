@@ -53,14 +53,12 @@ class ActiveActionsMask:
         Applies the mask, returns the agent_actions where the mask is True
         and the assitant_actions where the mask is False
         """
-
-        # TODO: Check if this crashes with torch shapes/sizes!
-        if agent_actions.shape[-1] != (self._n_actions, ):
+        if agent_actions.shape[-1] != self._n_actions:
             raise ValueError(f"Shape of agent_actions: {agent_actions.shape}" 
-                             f"does not match shape of action space {self._action_space.shape}!")
-        if assistant_actions.shape[-1] != (self._n_actions, ):
+                             f"does not match number of actions {self._n_actions}!")
+        if assistant_actions.shape[-1] != self._n_actions:
             raise ValueError(f"Shape of assistant_actions: {agent_actions.shape}" 
-                             f"does not match shape of action space {self._action_space.shape}!")
+                             f"does not match number of actions {self._n_actions}!")
 
         actions = torch.where(self.mask, agent_actions, assistant_actions)
         

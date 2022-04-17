@@ -52,6 +52,7 @@ class AssistantWrapper(gym.core.Wrapper):
         self.assistant = assistant
 
         self._assistant_action = None
+        self._prev_obs = env.reset()
 
     def observation(self, observation):
         # No action needed
@@ -68,15 +69,18 @@ class AssistantWrapper(gym.core.Wrapper):
         if self._assistant_action is not None:
             return self._assistant_action
 
-        obs = self.env.observe()
+        # obs = self.env.observe()
+        obs = self._prev_obs
         self._assistant_action = self.assistant.get_action(observation=obs)
 
         return self._assistant_action
 
     def step(self, action):
         self._assistant_action = None # Reset assistant action caching
+        obs, reward, done, info = super().step(action)
+        self._prev_obs = obs # Save for calculating next assistant action
 
-        return super().step(action)
+        return obs, reward, done, info
 
     def reset(self, **kwargs):
         self.assistant.reset()
