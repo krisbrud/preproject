@@ -20,7 +20,7 @@ _C.system.output_path = os.path.join(os.curdir, "outputs")
 ## TRAINING CONFIG
 _C.train = CN()
 # Number of parallel environments to use with SubProcVecEnv
-_C.train.num_envs = 1 # 8
+_C.train.num_envs = 8
 # Total timesteps to run training
 _C.train.total_timesteps = int(8e3) # int(30e6)
 # How many timesteps between each time agent is saved to disk and MLFlow

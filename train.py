@@ -152,7 +152,7 @@ def train():
     num_envs = cfg.train.num_envs
     print("Num envs:", num_envs)
 
-    env = get_assisted_envs(cfg)
+    # env = get_assisted_envs(cfg)
 
     # if num_envs > 1:
     #     env = SubprocVecEnv([
