@@ -149,24 +149,24 @@ class PathFollowAuv3D(gym.Env):
         # Simulate AUV dynamics one time-step and save action and state
         self.update_control_errors()
 
-        if self.control_structure == "end-to-end":
-            # Train all inputs simultaneously without assistance from PID controllers
-            pass  # No changes to "action"-variable needed
-        elif self.control_structure == "pid-assisted":
-            # Use PI controller for surge speed and PID controller
-            # for elevator, while letting the RL agent control the rudder
+        # if self.control_structure == "end-to-end":
+        #     # Train all inputs simultaneously without assistance from PID controllers
+        #     pass  # No changes to "action"-variable needed
+        # elif self.control_structure == "pid-assisted":
+        #     # Use PI controller for surge speed and PID controller
+        #     # for elevator, while letting the RL agent control the rudder
 
-            self.thrust_command = self.thrust_controller.u(self.u_error)
-            self.rudder_command = action  # Action seen from agent is only rudder
-            self.elevator_command = self.elevator_controller.u(
-                self.upsilon_error)  # self.elevator_controller.u(self.)
+        #     self.thrust_command = self.thrust_controller.u(self.u_error)
+        #     self.rudder_command = action  # Action seen from agent is only rudder
+        #     self.elevator_command = self.elevator_controller.u(
+        #         self.upsilon_error)  # self.elevator_controller.u(self.)
 
-            action = np.hstack((self.thrust_command, self.rudder_command,
-                                self.elevator_command))
-        else:
-            raise ValueError(
-                f"Invalid value for control structure: \"{self.control_structure}\""
-            )
+        #     action = np.hstack((self.thrust_command, self.rudder_command,
+        #                         self.elevator_command))
+        # else:
+        #     raise ValueError(
+        #         f"Invalid value for control structure: \"{self.control_structure}\""
+        #     )
 
         action = np.clip(action, np.array([0, -1, -1]), np.array([1, 1, 1]))
         if len(self.past_actions) > 0:

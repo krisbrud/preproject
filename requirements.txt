@@ -1,0 +1,4 @@
+scikit-image==0.17.2
+mlflow==1.23.1
+azureml-mlflow==1.38.0
+yacs==0.1.8

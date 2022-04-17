@@ -1,5 +1,5 @@
 import numpy as np
-
+from numba import jit
 
 def ssa(angle):
     return ((angle + np.pi) % (2*np.pi)) - np.pi
@@ -44,7 +44,7 @@ def J(eta):
         np.hstack([R, zero]),
         np.hstack([zero, T])])
 
-
+@jit
 def S_skew(a):
     a1 = a[0]
     a2 = a[1]
