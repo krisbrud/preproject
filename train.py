@@ -111,7 +111,27 @@ def get_mask_schedule(cfg) -> BaseMaskSchedule:
 
         return schedule
 
+def baseline_env_agent(cfg):
+    # Train a normal PPO agent from `stable_baselines3`, in order to compare the
+    # overhead of the AssistedPPO algorithm
+    if cfg.train.num_envs > 1:
+        env = SubprocVecEnv([
+            lambda: Monitor(gym.make(cfg.env.name),
+                            cfg.system.output_path,
+                            allow_early_resets=True) for i in range(cfg.train.num_envs)
+        ])
+    else:
+        # Only one env
+        env = DummyVecEnv([
+            lambda: Monitor(gym.make(cfg.env.name),
+                            cfg.system.output_path,
+                            allow_early_resets=True)
+        ])
     
+    hyperparams = cfg.hyperparam
+    agent = PPO("MlpPolicy", env, **hyperparams)
+
+    return env, agent
 
 def train():
     cfg = get_config()
@@ -155,7 +175,9 @@ def train():
 
     mask_schedule = get_mask_schedule(cfg)
     
-    agent = AssistedPPO("AssistedPolicy", env, mask_schedule, **hyperparams)
+    # agent = AssistedPPO("AssistedPolicy", env, mask_schedule, **hyperparams)
+
+    env, agent = baseline_env_agent(cfg)
 
     timesteps = cfg.train.total_timesteps
 
