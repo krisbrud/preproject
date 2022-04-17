@@ -2,7 +2,6 @@ import numpy as np
 import gym_auv.utils.geomutils as geom
 from numpy.linalg import inv
 from math import cos, sin
-from numba import jit
 
 I3 = np.identity(3)
 zero3= 0*I3
@@ -122,7 +121,6 @@ def M_inv():
     M = M_RB() + M_A()
     return inv(M)
 
-@jit
 def C_RB(nu):
     nu_2 = nu[3:6] # Angular velocities
 
