@@ -111,7 +111,27 @@ def get_mask_schedule(cfg) -> BaseMaskSchedule:
 
         return schedule
 
+def baseline_env_agent(cfg):
+    # Train a normal PPO agent from `stable_baselines3`, in order to compare the
+    # overhead of the AssistedPPO algorithm
+    if cfg.train.num_envs > 1:
+        env = SubprocVecEnv([
+            lambda: Monitor(gym.make(cfg.env.name),
+                            cfg.system.output_path,
+                            allow_early_resets=True) for i in range(cfg.train.num_envs)
+        ])
+    else:
+        # Only one env
+        env = DummyVecEnv([
+            lambda: Monitor(gym.make(cfg.env.name),
+                            cfg.system.output_path,
+                            allow_early_resets=True)
+        ])
     
+    hyperparams = cfg.hyperparam
+    agent = PPO("MlpPolicy", env, **hyperparams)
+
+    return env, agent
 
 def train():
     cfg = get_config()
@@ -148,14 +168,16 @@ def train():
     #                         allow_early_resets=True)
     #     ])
 
-    print(f"env action space {env.action_space}")
+    # print(f"env action space {env.action_space}")
 
     # Initialize a new agent from scratch
-    # agent = PPO("MlpPolicy", env, **hyperparams)
+    agent = PPO("MlpPolicy", env, **hyperparams)
 
-    mask_schedule = get_mask_schedule(cfg)
+    # mask_schedule = get_mask_schedule(cfg)
     
-    agent = AssistedPPO("AssistedPolicy", env, mask_schedule, **hyperparams)
+    # agent = AssistedPPO("AssistedPolicy", env, mask_schedule, **hyperparams)
+
+    # env, agent = baseline_env_agent(cfg)
 
     timesteps = cfg.train.total_timesteps
 
@@ -194,7 +216,7 @@ def train():
 
 
     # Evaluate policy and log metrics
-    mean_eval_reward, mean_eval_reward_std = evaluate_policy(agent, env, n_eval_episodes=cfg.n_eval_episodes)
+    mean_eval_reward, mean_eval_reward_std = evaluate_policy(agent, env, n_eval_episodes=cfg.train.n_eval_episodes)
 
 
     # Find the tensorboard log paths, as the filename is somewhat unpredictable
