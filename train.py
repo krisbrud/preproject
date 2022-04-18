@@ -159,7 +159,7 @@ def train():
     os.makedirs(tensorboard_dir, exist_ok=True)
 
     hyperparams = dataclasses.asdict(cfg.hyperparam)
-    hyperparams["tensorboard_dir"] = tensorboard_dir
+    hyperparams["tensorboard_log"] = tensorboard_dir
 
     # if cfg.mlflow_tracking_uri is None:
     #     # Try to look for AzureML workspace configuration in working directory and deduce MLFLow URI from there

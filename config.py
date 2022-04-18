@@ -42,7 +42,7 @@ class TrainConfig:
     # Number of parallel environments to use with SubProcVecEnv
     num_envs = 8
     # Total timesteps to run training
-    total_timesteps = int(100e3)  # int(30e6)
+    total_timesteps = int(30e6)  # int(100e3)
     # How many timesteps between each time agent is saved to disk and MLFlow
     save_freq = int(100e3)
     # MLFlow Tracking URI for logging metrics and artifacts.
@@ -85,18 +85,20 @@ class Config:
     hyperparam: HyperparamConfig
     train: TrainConfig
     assistance: AssistanceConfig
+    env: EnvConfig
 
 
 def get_default_config() -> Config:
     # Since some hyperparameters and instantiations may depend on others, we do it
     # this way
-    experiment: ExperimentConfig = ExperimentConfig()
-    system: SystemConfig = SystemConfig()
-    hyperparam: HyperparamConfig = HyperparamConfig()
-    train: TrainConfig = TrainConfig()
+    experiment = ExperimentConfig()
+    system = SystemConfig()
+    hyperparam = HyperparamConfig()
+    train = TrainConfig()
+    env = EnvConfig()
 
     # AssistanceConfig depends on the others, instantiate last
-    assistance: AssistanceConfig(
+    assistance = AssistanceConfig(
         mask_schedule=CheckpointSchedule(
             {0: mask_surge_only}, total_timesteps=train.total_timesteps
         )
@@ -106,6 +108,8 @@ def get_default_config() -> Config:
         experiment=experiment,
         system=system,
         hyperparam=hyperparam,
+        train=train,
         assistance=assistance,
+        env=env,
     )
     return config
