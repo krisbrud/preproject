@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from assisted_baselines.common.assistants.pid import PIDGains
 from assisted_baselines.common.mask import BaseMaskSchedule
 from assisted_baselines.common.schedules.checkpoint_schedule import CheckpointSchedule
-from utils.auv_masks import mask_surge_only
+from utils.auv_masks import mask_rudder_and_elevator
 
 
 @dataclass
@@ -100,7 +100,7 @@ def get_default_config() -> Config:
     # AssistanceConfig depends on the others, instantiate last
     assistance = AssistanceConfig(
         mask_schedule=CheckpointSchedule(
-            {0: mask_surge_only}, total_timesteps=train.total_timesteps
+            {0: mask_rudder_and_elevator}, total_timesteps=train.total_timesteps
         )
     )
 
