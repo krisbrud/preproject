@@ -61,29 +61,32 @@ pid_auv3d_config = {
     "reward_pitch_error": -1,
     "reward_verticaltrack_error": -0.0001,
     "reward_use_rudder": -0.1,
-    "reward_use_elevator": 0,  #-0.1,
+    "reward_use_elevator": 0,  # -0.1,
     "reward_collision": 0,
-    "sensor_span":
-    (140, 140),  # the horizontal and vertical span of the sensors
-    "sensor_suite":
-    (15,
-     15),  # the number of sensors covering the horizontal and vertical span
+    "sensor_span": (140, 140),  # the horizontal and vertical span of the sensors
+    "sensor_suite": (
+        15,
+        15,
+    ),  # the number of sensors covering the horizontal and vertical span
     "sensor_input_size": (
-        8, 8
+        8,
+        8,
     ),  # the shape of FLS data passed to the neural network. Max pooling from raw data is used
     "sensor_frequency": 1,
     "sonar_range": 25,
     "n_obs_errors": 5,
     "n_obs_inputs": 2,
-    "n_actuators": 3, # [thrust, rudder, elevator]
+    "n_actuators": 3,  # [thrust, rudder, elevator]
     "la_dist": 3,
     "accept_rad": 1,
     "n_waypoints": 7,
     "n_int_obstacles": 1,
     "n_pro_obstacles": 3,
-    "n_adv_obstacles": 8
+    "n_adv_obstacles": 8,
 }
 
-register(id='PathFollowAuv3D-v0',
-         entry_point='gym_auv.envs:PathFollowAuv3D',
-         kwargs={'env_config': pid_auv3d_config})
+register(
+    id="PathFollowAuv3D-v0",
+    entry_point="gym_auv.envs:PathFollowAuv3D",
+    kwargs={"env_config": pid_auv3d_config},
+)
