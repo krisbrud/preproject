@@ -4,6 +4,9 @@ import os
 from dataclasses import dataclass
 
 from assisted_baselines.common.assistants.pid import PIDGains
+from assisted_baselines.common.mask import BaseMaskSchedule
+from assisted_baselines.common.schedules.checkpoint_schedule import CheckpointSchedule
+from utils.auv_masks import mask_surge_only
 
 
 @dataclass
@@ -54,7 +57,6 @@ class TrainConfig:
 @dataclass
 class AuvPidConfig:
     # Gains for PID controllers for assistant
-    # TODO
     surge = PIDGains(Kp=2, Ki=1.5, Kd=0)
     rudder = PIDGains(Kp=3.5, Ki=0.05, Kd=0.03)
     elevator = PIDGains(Kp=3.5, Ki=0.05, Kd=0.03)
@@ -62,6 +64,7 @@ class AuvPidConfig:
 
 @dataclass
 class AssistanceConfig:
+    mask_schedule: BaseMaskSchedule
     # Define parameters for PID controllers
     auv_pid: AuvPidConfig = AuvPidConfig()
 
@@ -77,15 +80,32 @@ class EnvConfig:
 
 @dataclass
 class Config:
+    experiment: ExperimentConfig
+    system: SystemConfig
+    hyperparam: HyperparamConfig
+    train: TrainConfig
+    assistance: AssistanceConfig
+
+
+def get_default_config() -> Config:
+    # Since some hyperparameters and instantiations may depend on others, we do it
+    # this way
     experiment: ExperimentConfig = ExperimentConfig()
     system: SystemConfig = SystemConfig()
     hyperparam: HyperparamConfig = HyperparamConfig()
     train: TrainConfig = TrainConfig()
-    assistance: AssistanceConfig = AssistanceConfig()
 
+    # AssistanceConfig depends on the others, instantiate last
+    assistance: AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_surge_only}, total_timesteps=train.total_timesteps
+        )
+    )
 
-def get_default_config() -> Config:
-    # Done by instantiating the config.
-    # Implemented as function for verbosity.
-    config = Config()
+    config = Config(
+        experiment=experiment,
+        system=system,
+        hyperparam=hyperparam,
+        assistance=assistance,
+    )
     return config
