@@ -1,3 +1,5 @@
+import matplotlib  # Try to fix absurd bug due to this not being imported
+
 import cProfile
 import dataclasses
 import matplotlib as plt
