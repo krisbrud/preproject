@@ -1,3 +1,4 @@
+from typing import Any, Dict
 import mlflow
 from pytablewriter import Bool
 
@@ -24,12 +25,12 @@ class MLFlowTracker(AbstractTracker):
     def log_artifact(self, path, infer_artifact_path=True) -> Bool:
         """
         :param path (str) Path of artifact to plot
-        :param infer_artifact_path (Bool) Automatically put .pkl files in "model" folder, plots in "plots" folder 
+        :param infer_artifact_path (Bool) Automatically put .pkl files in "model" folder, plots in "plots" folder
         in mlflow artifacts
         """
 
         artifact_path = ""
-        
+
         if infer_artifact_path:
             if path.endswith(".pkl"):
                 artifact_path = "models"
@@ -54,18 +55,42 @@ class MLFlowTracker(AbstractTracker):
             mlflow.log_param(key, value)
         except Exception as e:
             # Failed to log param
-            print(f"Couldn't log params (key, value) ({key}, {value}) to MLFlow!")
+            print(f"Couldn't log param (key, value) ({key}, {value}) to MLFlow!")
             print(f"Exception: {e}")
             return False
 
         return True
-    
+
+    def log_params(
+        self, params: Dict[str, Any], prefix: str = "", prefix_delimiter: str = "."
+    ):
+        if prefix:  # No need if no prefix
+            # Add prefix to string, such that similar keys/params may be grouped together
+            # when looking through experiment in mlflow
+            prefixed_params = dict()
+            for k, v in params.items():
+                prefixed_params[prefix + prefix_delimiter + k] = v
+
+            params = prefixed_params
+
+        try:
+            mlflow.log_params(params)
+        except Exception as e:
+            # Failed to log params
+            print(f"Couldn't log params ({params}) to MLFlow!")
+            print(f"Exception: {e}")
+            return False
+
+        return True
+
     def log_metric(self, metric_name, value):
         try:
             mlflow.log_metric(metric_name, value)
         except Exception as e:
-            # Failed to log param
-            print(f"Couldn't log params (metric_name, value) ({metric_name}, {value}) to MLFlow!")
+            # Failed to log metric
+            print(
+                f"Couldn't log params (metric_name, value) ({metric_name}, {value}) to MLFlow!"
+            )
             print(f"Exception: {e}")
             return False
 

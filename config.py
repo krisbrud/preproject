@@ -1,4 +1,5 @@
 # my_project/config.py
+import argparse
 import os
 
 from dataclasses import dataclass
@@ -6,12 +7,12 @@ from dataclasses import dataclass
 from assisted_baselines.common.assistants.pid import PIDGains
 from assisted_baselines.common.mask import BaseMaskSchedule
 from assisted_baselines.common.schedules.checkpoint_schedule import CheckpointSchedule
-from utils.auv_masks import mask_rudder_and_elevator
+from utils.auv_masks import mask_rudder_and_elevator, mask_rudder_only
 
 
 @dataclass
 class ExperimentConfig:
-    name: str = "example_experiment_name"
+    name: str = "example-experiment-name"
 
 
 @dataclass
@@ -88,7 +89,7 @@ class Config:
     env: EnvConfig
 
 
-def get_default_config() -> Config:
+def _get_default_config() -> Config:
     # Since some hyperparameters and instantiations may depend on others, we do it
     # this way
     experiment = ExperimentConfig()
@@ -113,3 +114,63 @@ def get_default_config() -> Config:
         env=env,
     )
     return config
+
+
+def train_rudder_and_elevator_config():
+    cfg = _get_default_config()
+    cfg.experiment.name = "train-rudder-elevator"
+    cfg.train.total_timesteps = int(30e6)
+    return cfg
+
+
+def train_rudder_config():
+    cfg = _get_default_config()
+    # Train only rudder while assisting the others according to
+    # simentha's paper draft
+    cfg.experiment.name = "train-rudder"
+    cfg.train.total_timesteps = int(30e6)
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def train_elevator_config():
+    # Train only elevator according to Simentha's paper draft
+    cfg = _get_default_config()
+    cfg.experiment.name = "train-elevator"
+    cfg.train.total_timesteps = int(30e6)
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def get_config() -> Config:
+    """
+    Parse the command line argument, pick the chosen config
+    or none if no config is given.
+    """
+    available_configs = {
+        "train-rudder": train_rudder_config,
+        "train-elevator": train_elevator_config,
+        "train-rudder-elevator": train_rudder_and_elevator_config,
+    }
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config",
+        choices=list(available_configs.keys()),
+        default="train-rudder-elevator",
+        type=str,
+    )
+    parser.add_argument("--timesteps", default=int(30e6), type=int)
+    args = parser.parse_args()
+
+    cfg: Config = available_configs[args.config]()
+    cfg.train.total_timesteps = int(args.timesteps)
+
+    return cfg

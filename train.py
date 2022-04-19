@@ -10,12 +10,10 @@ from assisted_baselines.common.schedules.checkpoint_schedule import CheckpointSc
 # matplotlib in a way that causes an error
 
 
-from config import get_default_config, Config
+from config import get_config, Config
 
 import os
 import time
-import pprint
-
 
 import gym
 import gym_auv
@@ -43,11 +41,6 @@ from utils.callbacks import SaveAndTrackCallback, SaveCallback
 
 
 def get_assisted_envs(cfg: Config):
-    def get_gains(cfg_node: CfgNode):
-        pid_gains = PIDGains(Kp=cfg_node.Kp, Ki=cfg_node.Ki, Kd=cfg_node.Kd)
-
-        return pid_gains
-
     def make_pid_controller(gains: PIDGains, timestep: float):
         pid_controller = PIDController(
             Kp=gains.Kp, Ki=gains.Ki, Kd=gains.Kd, timestep=timestep
@@ -151,7 +144,7 @@ def baseline_env_agent(cfg: Config):
 
 
 def train():
-    cfg = get_default_config()
+    cfg = get_config()
 
     agents_dir = cfg.system.output_path  # os.path.join(cfg.output_path, "agents")
     tensorboard_dir = os.path.join(cfg.system.output_path, "tensorboard")
@@ -196,7 +189,29 @@ def train():
         )
 
         # Log hyperparameters and cfg
-        tracker.log_param("hyperparams", pprint.pformat(hyperparams))
+        tracker.log_params(hyperparams, prefix="hyperparams")
+
+        # tracker.log_params(dataclasses.asdict(cfg.assistance), cfg.assistance.auv_pid)
+        tracker.log_params(
+            dataclasses.asdict(cfg.env),
+        )
+        tracker.log_params(dataclasses.asdict(cfg.experiment), prefix="experiment")
+        tracker.log_params(dataclasses.asdict(cfg.system), prefix="system")
+        tracker.log_params(dataclasses.asdict(cfg.train), prefix="train")
+        # Log PID gains:
+        tracker.log_params(
+            cfg.assistance.auv_pid.elevator._asdict(),
+            prefix="cfg.assistance.auv_pid.elevator",
+        )
+        tracker.log_params(
+            cfg.assistance.auv_pid.rudder._asdict(),
+            prefix="cfg.assistance.auv_pid.rudder",
+        )
+        tracker.log_params(
+            cfg.assistance.auv_pid.surge._asdict(),
+            prefix="cfg.assistance.auv_pid.surge",
+        )
+
         # tracker.log_param("cfg", pprint.pformat(dataclasses.asdict(cfg)))
         # tracker.log_param("environment_config", pprint.pformat(gym_auv.pid_auv3d_config))
     else:
@@ -205,9 +220,9 @@ def train():
     save_and_track_callback = SaveAndTrackCallback(
         cfg.system.output_path, tracker=tracker, save_freq=save_freq
     )
-    checkpoint_callback = CheckpointCallback(
-        save_freq=save_freq, save_path=cfg.system.output_path, name_prefix="model"
-    )
+    # checkpoint_callback = CheckpointCallback(
+    #     save_freq=save_freq, save_path=cfg.system.output_path, name_prefix="model"
+    # )
 
     tic = time.perf_counter()
     agent.learn(
