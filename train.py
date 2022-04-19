@@ -1,8 +1,8 @@
-import matplotlib  # Try to fix absurd bug due to this not being imported
-
-import cProfile
+# import matplotlib  # Try to fix absurd bug due to this not being imported
+# matplotlib.use("TKAgg")
 import dataclasses
-import matplotlib as plt
+
+# import matplotlib as plt
 import torch
 from assisted_baselines.common.assistant import AssistantWrapper
 from assisted_baselines.common.mask import ActiveActionsMask, BaseMaskSchedule
