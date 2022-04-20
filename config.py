@@ -1,110 +1,182 @@
 # my_project/config.py
+import argparse
+import dataclasses
 import os
-from yacs.config import CfgNode as CN
+
+from dataclasses import dataclass
+
+from assisted_baselines.common.assistants.pid import PIDGains
+from assisted_baselines.common.mask import BaseMaskSchedule
+from assisted_baselines.common.schedules.checkpoint_schedule import CheckpointSchedule
+from utils.auv_masks import mask_rudder_and_elevator, mask_rudder_only
 
 
-_C = CN()
-
-## EXPERIMENT CONFIG
-_C.experiment = CN()
-# Name of experiment for naming tensorboard logs and runs in MLFlow
-_C.experiment.name = "example_experiment_name"
-
-## SYSTEM CONFIG
-_C.system = CN()
-# Log path. Required to be "./logs" by AzureML
-_C.system.log_path = os.path.join(os.curdir, "logs")
-# Path for outputs. Required to be "./outputs" by AzureML for saving of artifacts
-_C.system.output_path = os.path.join(os.curdir, "outputs")
-
-## TRAINING CONFIG
-_C.train = CN()
-# Number of parallel environments to use with SubProcVecEnv
-_C.train.num_envs = 8
-# Total timesteps to run training
-_C.train.total_timesteps = int(100e3) # int(30e6)
-# How many timesteps between each time agent is saved to disk and MLFlow
-_C.train.save_freq = int(100e3)
-# MLFlow Tracking URI for logging metrics and artifacts. 
-# Set to None if it's not going to be used.
-_C.train.mlflow_tracking_uri = "azureml://northeurope.api.azureml.ms/mlflow/v1.0/subscriptions/3165a1c1-fd45-4c8d-938e-0058c823f960/resourceGroups/aml-playground/providers/Microsoft.MachineLearningServices/workspaces/aml-playground"
-# RL Algorithm to use. Currently supports "AssistedPPO", which is implmented in `krisbrud/assisted-baselines`.
-_C.train.algorithm = "AssistedPPO"
-# How many evaluation episodes to run when evaluating the environment
-_C.train.n_eval_episodes = 100
-
-## ALGORITHM HYPERPARAMETERS
-# Hyperparameters for PPO algorithm
-_C.hyperparam = CN()
-# Also see https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#parameters
-# for more details
-_C.hyperparam.n_steps = 1024
-_C.hyperparam.learning_rate = 1e-3
-_C.hyperparam.batch_size = 1024
-_C.hyperparam.gae_lambda = 0.95
-_C.hyperparam.gamma = 0.999 # Discount factor
-_C.hyperparam.n_epochs = 4  # Number of epochs per rollout
-_C.hyperparam.clip_range = 0.2  # Clip range for PPO objective function
-_C.hyperparam.ent_coef = 0.01   # Coefficient for entropy loss
-_C.hyperparam.verbose = 2
-
-## ASSISTANCE CONFIG
-# Configuration for assistants, masks and schedules
-_C.assistance = CN()
-_C.assistance.masks = CN()
-AGENT_FLAG = True 
-ASSISTANT_FLAG = False
-# Define masks
-# Masks are named after the actuators that are controlled by the RL agent
-# (surge, rudder, elevator)
-mask_surge_only =                [AGENT_FLAG,        ASSISTANT_FLAG,     ASSISTANT_FLAG]
-mask_surge_and_rudder =          [AGENT_FLAG,        AGENT_FLAG,         ASSISTANT_FLAG]
-mask_agent_only =                [AGENT_FLAG,        AGENT_FLAG,         AGENT_FLAG]
-mask_surge_and_elevator =        [AGENT_FLAG,        ASSISTANT_FLAG,     AGENT_FLAG]
-mask_rudder_only =               [ASSISTANT_FLAG,    AGENT_FLAG,         ASSISTANT_FLAG]
-mask_elevator_only =             [ASSISTANT_FLAG,    ASSISTANT_FLAG,     AGENT_FLAG]
-mask_rudder_and_elevator =       [ASSISTANT_FLAG,    AGENT_FLAG,         AGENT_FLAG]
-mask_assistant_only =            [ASSISTANT_FLAG,    ASSISTANT_FLAG,     ASSISTANT_FLAG]
-
-_C.assistance.checkpoints = [
-  (0, mask_elevator_only),
-]
-
-# Define parameters for PID controllers
-_C.assistance.pid = CN()
-TODO = 123
-_C.assistance.pid.surge = CN()
-_C.assistance.pid.surge.Kp = TODO
-_C.assistance.pid.surge.Ki = TODO
-_C.assistance.pid.surge.Kd = TODO
-
-_C.assistance.pid.rudder = CN()
-_C.assistance.pid.rudder.Kp = TODO
-_C.assistance.pid.rudder.Ki = TODO
-_C.assistance.pid.rudder.Kd = TODO
-
-_C.assistance.pid.elevator = CN()
-_C.assistance.pid.elevator.Kp = TODO
-_C.assistance.pid.elevator.Ki = TODO
-_C.assistance.pid.elevator.Kd = TODO
+@dataclass
+class ExperimentConfig:
+    name: str = "example-experiment-name"
 
 
-## ENVIRONMENT CONFIG
-_C.env = CN()
-# Name of gym environment to look up
-_C.env.name = "PathFollowAuv3D-v0"
-_C.env.n_actions = 3
+@dataclass
+class SystemConfig:
+    # Log path. Required to be "./logs" by AzureML
+    log_path: str = os.path.join(os.curdir, "logs")
+    # Path for outputs. Required to be "./outputs" by AzureML for saving of artifacts
+    output_path: str = os.path.join(os.curdir, "outputs")
+
+    def __post_init__(self):
+        self.tensorboard_dir = os.path.join(self.output_path, "tensorboard")
 
 
+@dataclass
+class HyperparamConfig:
+    # Also see https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#parameters
+    # for more details
+    n_steps: int = 1024
+    learning_rate: float = 1e-3
+    batch_size: int = 1024
+    gae_lambda: float = 0.95
+    gamma: float = 0.999  # Discount factor
+    n_epochs = 4  # Number of epochs per rollout
+    clip_range: float = 0.2  # Clip range for PPO objective function
+    ent_coef: float = 0.01  # Coefficient for entropy loss
+    verbose: int = 2
 
 
+@dataclass
+class TrainConfig:
+    # Number of parallel environments to use with SubProcVecEnv
+    num_envs: int = 8
+    # Total timesteps to run training
+    total_timesteps: int = int(30e6)  # int(100e3)
+    # How many timesteps between each time agent is saved to disk and MLFlow
+    save_freq: int = int(100e3)
+    # MLFlow Tracking URI for logging metrics and artifacts.
+    # Set to None if it's not going to be used.
+    mlflow_tracking_uri: str = "azureml://northeurope.api.azureml.ms/mlflow/v1.0/subscriptions/3165a1c1-fd45-4c8d-938e-0058c823f960/resourceGroups/aml-playground/providers/Microsoft.MachineLearningServices/workspaces/aml-playground"
+    # RL Algorithm to use. Currently supports "AssistedPPO", which is implmented in `krisbrud/assisted-baselines`.
+    algorithm: str = "AssistedPPO"
+    # How many evaluation episodes to run when evaluating the environment
+    n_eval_episodes: int = 100
 
-def get_cfg_defaults():
-  """Get a yacs CfgNode object with default values for my_project."""
-  # Return a clone so that the defaults will not be altered
-  # This is for the "local variable" use pattern
-  return _C.clone()
 
-# Alternatively, provide a way to import the defaults as
-# a global singleton:
-# cfg = _C  # users can `from config import cfg`
+@dataclass
+class AuvPidConfig:
+    # Gains for PID controllers for assistant
+    surge = PIDGains(Kp=2, Ki=1.5, Kd=0)
+    rudder = PIDGains(Kp=3.5, Ki=0.05, Kd=0.03)
+    elevator = PIDGains(Kp=3.5, Ki=0.05, Kd=0.03)
+
+
+@dataclass
+class AssistanceConfig:
+    mask_schedule: BaseMaskSchedule
+    # Define parameters for PID controllers
+    auv_pid: AuvPidConfig = AuvPidConfig()
+
+
+@dataclass
+class EnvConfig:
+    # Class for configuring the OpenAI gym env
+    # Name of gym environment to look up
+    name: str = "PathFollowAuv3D-v0"
+    # Number of actuators in action space
+    n_actions: int = 3
+
+
+@dataclass
+class Config:
+    experiment: ExperimentConfig
+    system: SystemConfig
+    hyperparam: HyperparamConfig
+    train: TrainConfig
+    assistance: AssistanceConfig
+    env: EnvConfig
+
+
+def _get_default_config() -> Config:
+    # Since some hyperparameters and instantiations may depend on others, we do it
+    # this way
+    experiment = ExperimentConfig()
+    system = SystemConfig()
+    hyperparam = HyperparamConfig()
+    train = TrainConfig()
+    env = EnvConfig()
+
+    # AssistanceConfig depends on the others, instantiate last
+    assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_and_elevator}, total_timesteps=train.total_timesteps
+        )
+    )
+
+    config = Config(
+        experiment=experiment,
+        system=system,
+        hyperparam=hyperparam,
+        train=train,
+        assistance=assistance,
+        env=env,
+    )
+    return config
+
+
+def train_rudder_and_elevator_config():
+    cfg = _get_default_config()
+    cfg.experiment.name = "train-rudder-elevator"
+    cfg.train.total_timesteps = int(30e6)
+    return cfg
+
+
+def train_rudder_config():
+    cfg = _get_default_config()
+    # Train only rudder while assisting the others according to
+    # simentha's paper draft
+    cfg.experiment.name = "train-rudder"
+    cfg.train.total_timesteps = int(30e6)
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def train_elevator_config():
+    # Train only elevator according to Simentha's paper draft
+    cfg = _get_default_config()
+    cfg.experiment.name = "train-elevator"
+    cfg.train.total_timesteps = int(30e6)
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def get_config() -> Config:
+    """
+    Parse the command line argument, pick the chosen config
+    or none if no config is given.
+    """
+    available_configs = {
+        "train-rudder": train_rudder_config,
+        "train-elevator": train_elevator_config,
+        "train-rudder-elevator": train_rudder_and_elevator_config,
+    }
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config",
+        choices=list(available_configs.keys()),
+        default="train-rudder-elevator",
+        type=str,
+    )
+    parser.add_argument("--timesteps", default=int(30e6), type=int)
+    args = parser.parse_args()
+
+    cfg: Config = available_configs[args.config]()
+    cfg.train.total_timesteps = int(args.timesteps)
+
+    print("get config train", dataclasses.asdict(cfg.train))
+
+    return cfg

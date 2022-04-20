@@ -4,6 +4,7 @@
 import collections
 import copy
 import warnings
+
 # from abc import ABC, abstractmethod
 from functools import partial
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
@@ -26,6 +27,7 @@ from stable_baselines3.common.distributions import (
 )
 
 from stable_baselines3.common.policies import BasePolicy
+
 # from stable_baselines3.common.preprocessing import get_action_dim, is_image_space, maybe_transpose, preprocess_obs
 from stable_baselines3.common.torch_layers import (
     BaseFeaturesExtractor,
@@ -36,13 +38,18 @@ from stable_baselines3.common.torch_layers import (
     create_mlp,
 )
 from stable_baselines3.common.type_aliases import Schedule
-from stable_baselines3.common.utils import get_device, is_vectorized_observation, obs_as_tensor
+from stable_baselines3.common.utils import (
+    get_device,
+    is_vectorized_observation,
+    obs_as_tensor,
+)
 from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.buffers import RolloutBuffer
 
 from assisted_baselines.common.assistant import AssistantWrapper, BaseAssistant
 from assisted_baselines.common.mask import ActiveActionsMask, BaseMaskSchedule
+
 
 class AssistedActorCriticPolicy(BasePolicy):
     """
@@ -54,7 +61,7 @@ class AssistedActorCriticPolicy(BasePolicy):
     :param assistant: TODO
     :param action_mask_schedule: TODO
     :param initial_timestep: The timestep when initializing the AssistedActorCriticPolicy.
-        Used to get the correct mask when saving the policy to non-volatile storage and 
+        Used to get the correct mask when saving the policy to non-volatile storage and
         reopening it again.
     :param net_arch: The specification of the policy and value networks.
     :param activation_fn: Activation function
@@ -106,7 +113,9 @@ class AssistedActorCriticPolicy(BasePolicy):
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
     ):
         if use_sde:
-            raise NotImplementedError("SDE is not implemented for AssistedActorCriticPolicy!")
+            raise NotImplementedError(
+                "SDE is not implemented for AssistedActorCriticPolicy!"
+            )
 
         if optimizer_kwargs is None:
             optimizer_kwargs = {}
@@ -135,7 +144,9 @@ class AssistedActorCriticPolicy(BasePolicy):
         self.activation_fn = activation_fn
         self.ortho_init = ortho_init
 
-        self.features_extractor = features_extractor_class(self.observation_space, **self.features_extractor_kwargs)
+        self.features_extractor = features_extractor_class(
+            self.observation_space, **self.features_extractor_kwargs
+        )
         self.features_dim = self.features_extractor.features_dim
 
         self.normalize_images = normalize_images
@@ -143,16 +154,16 @@ class AssistedActorCriticPolicy(BasePolicy):
         dist_kwargs = None
         # Keyword arguments for gSDE distribution
         # if use_sde:
-            # raise NotImplementedError
-            # dist_kwargs = {
-            #     "full_std": full_std,
-            #     "squash_output": squash_output,
-            #     "use_expln": use_expln,
-            #     "learn_features": False,
-            # }
+        # raise NotImplementedError
+        # dist_kwargs = {
+        #     "full_std": full_std,
+        #     "squash_output": squash_output,
+        #     "use_expln": use_expln,
+        #     "learn_features": False,
+        # }
 
         # if sde_net_arch is not None:
-            # warnings.warn("sde_net_arch is deprecated and will be removed in SB3 v2.4.0.", DeprecationWarning)
+        # warnings.warn("sde_net_arch is deprecated and will be removed in SB3 v2.4.0.", DeprecationWarning)
 
         # self.use_sde = use_sde
         self.dist_kwargs = dist_kwargs
@@ -165,17 +176,18 @@ class AssistedActorCriticPolicy(BasePolicy):
         # assert self.assistant.action_space.shape == action_space.shape, "Assistant has different action space shape than policy!"
 
         # Action distribution
-        self.action_dist = make_proba_distribution(action_space, 
-                                                   # use_sde=use_sde, 
-                                                   dist_kwargs=dist_kwargs)
+        self.action_dist = make_proba_distribution(
+            action_space,
+            # use_sde=use_sde,
+            dist_kwargs=dist_kwargs,
+        )
 
         self._build(lr_schedule)
 
-    
-
     def update_mask(self, timestep):
-        self.current_mask: ActiveActionsMask = self.action_mask_schedule.get_mask(timestep=timestep)
-
+        self.current_mask: ActiveActionsMask = self.action_mask_schedule.get_mask(
+            timestep=timestep
+        )
 
     def _get_constructor_parameters(self) -> Dict[str, Any]:
         data = super()._get_constructor_parameters()
@@ -206,7 +218,9 @@ class AssistedActorCriticPolicy(BasePolicy):
         Sample new weights for the exploration matrix.
         :param n_envs:
         """
-        assert isinstance(self.action_dist, StateDependentNoiseDistribution), "reset_noise() is only available when using gSDE"
+        assert isinstance(
+            self.action_dist, StateDependentNoiseDistribution
+        ), "reset_noise() is only available when using gSDE"
         self.action_dist.sample_weights(self.log_std, batch_size=n_envs)
 
     def _build_mlp_extractor(self) -> None:
@@ -238,7 +252,9 @@ class AssistedActorCriticPolicy(BasePolicy):
             self.action_net, self.log_std = self.action_dist.proba_distribution_net(
                 latent_dim=latent_dim_pi, log_std_init=self.log_std_init
             )
-            self.action_net_value_head = nn.Linear(latent_dim_pi, self.action_space.shape[0])
+            self.action_net_value_head = nn.Linear(
+                latent_dim_pi, self.action_space.shape[0]
+            )
         # elif isinstance(self.action_dist, StateDependentNoiseDistribution):
         #     self.action_net, self.log_std = self.action_dist.proba_distribution_net(
         #         latent_dim=latent_dim_pi, latent_sde_dim=latent_dim_pi, log_std_init=self.log_std_init
@@ -266,9 +282,13 @@ class AssistedActorCriticPolicy(BasePolicy):
                 module.apply(partial(self.init_weights, gain=gain))
 
         # Setup optimizer with initial learning rate
-        self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)
+        self.optimizer = self.optimizer_class(
+            self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs
+        )
 
-    def forward(self, obs: th.Tensor, deterministic: bool = False) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+    def forward(
+        self, obs: th.Tensor, deterministic: bool = False
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
         """
         Forward pass in all the networks (actor and critic)
         :param obs: Observation
@@ -276,7 +296,7 @@ class AssistedActorCriticPolicy(BasePolicy):
         :return: action, value and log probability of the action
         """
         # Get the assistants actions
-        # assistant_actions 
+        # assistant_actions
 
         # Preprocess the observation if needed
         features = self.extract_features(obs)
@@ -312,26 +332,27 @@ class AssistedActorCriticPolicy(BasePolicy):
         else:
             raise ValueError("Invalid action distribution")
 
-    def _predict(self, observation: th.Tensor, deterministic: bool = False) -> th.Tensor:
+    def _predict(
+        self, observation: th.Tensor, deterministic: bool = False
+    ) -> th.Tensor:
         """
         Get the action according to the policy for a given observation.
         :param observation:
         :param deterministic: Whether to use stochastic or deterministic actions
         :return: Taken action according to the policy
         """
-        agent_actions = self.get_distribution(observation).get_actions(deterministic=deterministic)
-        assistant_actions = self.assistant.get_actions(observation)
-
-        # actions = th.where(self.current_mask, agent_actions, assistant_actions)
-        actions = self.current_mask.apply(
-            agent_actions=agent_actions,
-            assistant_actions=assistant_actions
+        actions = self.get_distribution(observation).get_actions(
+            deterministic=deterministic
         )
-        # TODO: Test that this works as intended?
+
+        # Since the AssistantWrapper takes care of the assistant actions, we only pass
+        # the actions taken from the distribution
 
         return actions
 
-    def evaluate_actions(self, obs: th.Tensor, actions: th.Tensor, mask=None) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+    def evaluate_actions(
+        self, obs: th.Tensor, actions: th.Tensor, mask=None
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
         """
         Evaluate actions according to the current policy,
         given the observations.
@@ -348,7 +369,9 @@ class AssistedActorCriticPolicy(BasePolicy):
         values = self.value_net(latent_vf)
         return values, log_prob, distribution.entropy()
 
-    def evaluate_masked_actions(self, obs: th.Tensor, actions: th.Tensor) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+    def evaluate_masked_actions(
+        self, obs: th.Tensor, actions: th.Tensor
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
         """
         Evaluate actions according to the current policy,
         given the observations.
@@ -367,7 +390,7 @@ class AssistedActorCriticPolicy(BasePolicy):
         masked_actions = self.current_mask.select(actions)
         log_prob = sum_independent_dims(masked_gaussian.log_prob(masked_actions))
         entropy = sum_independent_dims(masked_gaussian.entropy())
-        
+
         values = self.value_net(latent_vf)
         return values, log_prob, entropy
 
@@ -383,13 +406,14 @@ class AssistedActorCriticPolicy(BasePolicy):
         pi_value_estimate = self.action_net_value_head(latent_pi)
         return pi_value_estimate
 
-    def _get_masked_distribution(self, distribution: DiagGaussianDistribution) -> th.distributions.Normal:
+    def _get_masked_distribution(
+        self, distribution: DiagGaussianDistribution
+    ) -> th.distributions.Normal:
         masked_loc = self.current_mask.select(distribution.distribution.loc)
         masked_scale = self.current_mask.select(distribution.distribution.scale)
 
         masked_dist = th.distributions.Normal(loc=masked_loc, scale=masked_scale)
         return masked_dist
-
 
     def get_distribution(self, obs: th.Tensor) -> Distribution:
         """
