@@ -149,7 +149,7 @@ def train():
     cfg = get_config()
 
     agents_dir = cfg.system.output_path  # os.path.join(cfg.output_path, "agents")
-    tensorboard_dir = os.path.join(cfg.system.output_path, "tensorboard")
+    tensorboard_dir = cfg.system.tensorboard_dir
     os.makedirs(agents_dir, exist_ok=True)
     os.makedirs(tensorboard_dir, exist_ok=True)
 
@@ -199,7 +199,13 @@ def train():
         )
         tracker.log_params(dataclasses.asdict(cfg.experiment), prefix="experiment")
         tracker.log_params(dataclasses.asdict(cfg.system), prefix="system")
-        tracker.log_params(dataclasses.asdict(cfg.train), prefix="train")
+        train_dict = dataclasses.asdict(cfg.train)
+        print("train dict keys", train_dict.keys())
+        print(cfg.train.total_timesteps)
+        train_dict.pop(
+            "mlflow_tracking_uri"
+        )  # Too long to log in mlflow. Also logged automatically
+        tracker.log_params(train_dict, prefix="train")
         # Log PID gains:
         tracker.log_params(
             cfg.assistance.auv_pid.elevator._asdict(),

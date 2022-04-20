@@ -14,7 +14,7 @@ class MLFlowTracker(AbstractTracker):
 
         # Initialize MLFlow
         mlflow.set_tracking_uri(self.mlflow_tracking_uri)
-        mlflow.set_experiment(str(self.experiment_name))
+        mlflow.set_experiment(experiment_name=str(self.experiment_name))
 
         # End the active run if one exists from previous repetition:
         if mlflow.active_run() is not None:
@@ -22,7 +22,7 @@ class MLFlowTracker(AbstractTracker):
 
         mlflow.start_run()
 
-    def log_artifact(self, path, infer_artifact_path=True) -> Bool:
+    def log_artifact(self, path: str, infer_artifact_path: Bool = True) -> Bool:
         """
         :param path (str) Path of artifact to plot
         :param infer_artifact_path (Bool) Automatically put .pkl files in "model" folder, plots in "plots" folder

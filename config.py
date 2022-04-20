@@ -1,5 +1,6 @@
 # my_project/config.py
 import argparse
+import dataclasses
 import os
 
 from dataclasses import dataclass
@@ -22,6 +23,9 @@ class SystemConfig:
     # Path for outputs. Required to be "./outputs" by AzureML for saving of artifacts
     output_path: str = os.path.join(os.curdir, "outputs")
 
+    def __post_init__(self):
+        self.tensorboard_dir = os.path.join(self.output_path, "tensorboard")
+
 
 @dataclass
 class HyperparamConfig:
@@ -41,18 +45,18 @@ class HyperparamConfig:
 @dataclass
 class TrainConfig:
     # Number of parallel environments to use with SubProcVecEnv
-    num_envs = 8
+    num_envs: int = 8
     # Total timesteps to run training
-    total_timesteps = int(30e6)  # int(100e3)
+    total_timesteps: int = int(30e6)  # int(100e3)
     # How many timesteps between each time agent is saved to disk and MLFlow
-    save_freq = int(100e3)
+    save_freq: int = int(100e3)
     # MLFlow Tracking URI for logging metrics and artifacts.
     # Set to None if it's not going to be used.
-    mlflow_tracking_uri = "azureml://northeurope.api.azureml.ms/mlflow/v1.0/subscriptions/3165a1c1-fd45-4c8d-938e-0058c823f960/resourceGroups/aml-playground/providers/Microsoft.MachineLearningServices/workspaces/aml-playground"
+    mlflow_tracking_uri: str = "azureml://northeurope.api.azureml.ms/mlflow/v1.0/subscriptions/3165a1c1-fd45-4c8d-938e-0058c823f960/resourceGroups/aml-playground/providers/Microsoft.MachineLearningServices/workspaces/aml-playground"
     # RL Algorithm to use. Currently supports "AssistedPPO", which is implmented in `krisbrud/assisted-baselines`.
-    algorithm = "AssistedPPO"
+    algorithm: str = "AssistedPPO"
     # How many evaluation episodes to run when evaluating the environment
-    n_eval_episodes = 100
+    n_eval_episodes: int = 100
 
 
 @dataclass
@@ -74,9 +78,9 @@ class AssistanceConfig:
 class EnvConfig:
     # Class for configuring the OpenAI gym env
     # Name of gym environment to look up
-    name = "PathFollowAuv3D-v0"
+    name: str = "PathFollowAuv3D-v0"
     # Number of actuators in action space
-    n_actions = 3
+    n_actions: int = 3
 
 
 @dataclass
@@ -172,5 +176,7 @@ def get_config() -> Config:
 
     cfg: Config = available_configs[args.config]()
     cfg.train.total_timesteps = int(args.timesteps)
+
+    print("get config train", dataclasses.asdict(cfg.train))
 
     return cfg
