@@ -117,9 +117,7 @@ def M_A():
     return M_A
 
 # TODO: Consider using generator?
-def M_inv():
-    M = M_RB() + M_A()
-    return inv(M)
+M_inv = inv(M_RB() + M_A())
 
 def C_RB(nu):
     nu_2 = nu[3:6] # Angular velocities
