@@ -139,7 +139,7 @@ def baseline_env_agent(cfg: Config):
             ]
         )
 
-    hyperparams = cfg.hyperparam
+    hyperparams = dataclasses.asdict(cfg.hyperparam)
     agent = PPO("MlpPolicy", env, **hyperparams)
 
     return env, agent
@@ -163,20 +163,15 @@ def train():
     num_envs = cfg.train.num_envs
     print("Num envs:", num_envs)
 
-    env = get_assisted_envs(cfg)
+    # Initialize a new agent from scratch
+    # agent = PPO("MlpPolicy", env, **hyperparams)
 
+    env = get_assisted_envs(cfg)
+    mask_schedule = cfg.assistance.mask_schedule
+    agent = AssistedPPO("AssistedPolicy", env, mask_schedule, **hyperparams)
     # print(f"env action space {env.action_space}")
 
-    # Initialize a new agent from scratch
-    agent = PPO("MlpPolicy", env, **hyperparams)
-
-    mask_schedule = cfg.assistance.mask_schedule
-
-    agent = AssistedPPO("AssistedPolicy", env, mask_schedule, **hyperparams)
-
     # env, agent = baseline_env_agent(cfg)
-
-    timesteps = cfg.train.total_timesteps
 
     # Save agent periodically
     # Number of environment steps summed across multiple envs
@@ -201,7 +196,6 @@ def train():
         tracker.log_params(dataclasses.asdict(cfg.system), prefix="system")
         train_dict = dataclasses.asdict(cfg.train)
         print("train dict keys", train_dict.keys())
-        print(cfg.train.total_timesteps)
         train_dict.pop(
             "mlflow_tracking_uri"
         )  # Too long to log in mlflow. Also logged automatically
@@ -232,16 +226,20 @@ def train():
     #     save_freq=save_freq, save_path=cfg.system.output_path, name_prefix="model"
     # )
 
+    print("Total timesteps:", cfg.train.total_timesteps)
     tic = time.perf_counter()
     agent.learn(
-        total_timesteps=timesteps, tb_log_name="PPO", callback=save_and_track_callback
+        total_timesteps=cfg.train.total_timesteps,
+        tb_log_name="PPO",
+        callback=save_and_track_callback,
     )
     toc = time.perf_counter()
 
-    # save_path = os.path.join(cfg.system.output_path, "last_model.pkl")
-    # agent.save(save_path)
+    save_path = os.path.join(cfg.system.output_path, "last_model.pkl")
+    agent.save(save_path)
 
     # Evaluate policy and log metrics
+    print("Evaluating performance!")
     mean_eval_reward, mean_eval_reward_std = evaluate_policy(
         agent, env, n_eval_episodes=cfg.train.n_eval_episodes
     )
@@ -259,6 +257,7 @@ def train():
             tracker.log_artifact(tb_log)
 
     print(f"Using {num_envs} environments")
+    timesteps = cfg.train.total_timesteps
     print(f"Average total fps {timesteps / (toc - tic):0.2f})")
     print(f"Trained {timesteps} in {toc - tic:0.2f} seconds")
     print(
