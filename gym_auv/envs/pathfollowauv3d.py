@@ -16,6 +16,7 @@ class PathFollowAuv3D(gym.Env):
     """
     3D Auv environment with path following (but without obstacles and sonar)
     """
+
     def __init__(self, env_config, control_structure="pid-assisted"):
         for key in env_config:
             setattr(self, key, env_config[key])
@@ -24,22 +25,26 @@ class PathFollowAuv3D(gym.Env):
         self.action_space = gym.spaces.Box(
             low=np.array([-1] * self.n_actuators),
             high=np.array([1] * self.n_actuators),
-            dtype=np.float32)
+            dtype=np.float32,
+        )
         self.observation_space = gym.spaces.Box(
             low=np.array([-1] * self.n_observations),
             high=np.array([1] * self.n_observations),
-            dtype=np.float32)
+            dtype=np.float32,
+        )
 
         valid_control_structures = ("end-to-end", "pid-assisted")
-        assert control_structure in valid_control_structures, f"The control structure {control_structure}" \
+        assert control_structure in valid_control_structures, (
+            f"The control structure {control_structure}"
             "is not supported, the supported control structures are: {valid_control_structures}"
+        )
         self.control_structure = control_structure
 
         self.reset()
 
     def reset(self):
         """
-        Resets environment to initial state. 
+        Resets environment to initial state.
         """
         self.vessel = None
         self.path = None
@@ -58,8 +63,9 @@ class PathFollowAuv3D(gym.Env):
 
         self.obstacles = []
         self.nearby_obstacles = []
-        self.sensor_readings = np.zeros(shape=self.sensor_suite,
-                                        dtype=float)  # TODO Remove?
+        self.sensor_readings = np.zeros(
+            shape=self.sensor_suite, dtype=float
+        )  # TODO Remove?
         self.collided = False
         self.penalize_control = 0.0
 
@@ -94,30 +100,28 @@ class PathFollowAuv3D(gym.Env):
     def initialize_state(self):
         # Initialize the state of the auv and environment.
         # Similar to "beginner scenario" from "PathColav3D-v0"
-        self.current = Current(mu=0,
-                               Vmin=0,
-                               Vmax=0,
-                               Vc_init=0,
-                               alpha_init=0,
-                               beta_init=0,
-                               t_step=0)  #Current object with zero velocity
+        self.current = Current(
+            mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0
+        )  # Current object with zero velocity
         waypoints = generate_random_waypoints(self.n_waypoints)
         self.path = QPMI(waypoints)
         init_pos = [
             np.random.uniform(0, 2) * (-5),
             np.random.normal(0, 1) * 5,
-            np.random.normal(0, 1) * 5
+            np.random.normal(0, 1) * 5,
         ]
-        init_attitude = np.array([
-            0,
-            self.path.get_direction_angles(0)[1],
-            self.path.get_direction_angles(0)[0]
-        ])
+        init_attitude = np.array(
+            [
+                0,
+                self.path.get_direction_angles(0)[1],
+                self.path.get_direction_angles(0)[0],
+            ]
+        )
         initial_state = np.hstack([init_pos, init_attitude])
         return initial_state
 
     def plot_section3(self):
-        plt.rc('lines', linewidth=3)
+        plt.rc("lines", linewidth=3)
         ax = self.plot3D(wps_on=False)
         ax.set_xlabel(xlabel="North [m]", fontsize=14)
         ax.set_ylabel(ylabel="East [m]", fontsize=14)
@@ -129,9 +133,7 @@ class PathFollowAuv3D(gym.Env):
         ax.set_yticks([-50, 0, 50])
         ax.set_zticks([-50, 0, 50])
         ax.view_init(elev=-165, azim=-35)
-        ax.scatter3D(*self.vessel.position,
-                     label="Initial Position",
-                     color="y")
+        ax.scatter3D(*self.vessel.position, label="Initial Position", color="y")
 
         self._axis_equal3d(ax)
         ax.legend(fontsize=14)
@@ -139,7 +141,7 @@ class PathFollowAuv3D(gym.Env):
 
     def step(self, action):
         """
-        Simulates the environment one time-step. 
+        Simulates the environment one time-step.
         """
         # Simulate Current
         self.current.sim()
@@ -170,22 +172,22 @@ class PathFollowAuv3D(gym.Env):
 
         action = np.clip(action, np.array([0, -1, -1]), np.array([1, 1, 1]))
         if len(self.past_actions) > 0:
-            self.action_derivative = (
-                action[1:] - self.past_actions[-1][1:]) / (self.step_size)  # ?
+            self.action_derivative = (action[1:] - self.past_actions[-1][1:]) / (
+                self.step_size
+            )  # ?
 
         self.vessel.step(action, nu_c)
 
         self.past_states.append(np.copy(self.vessel.state))
         self.past_errors.append(
-            np.array([
-                self.u_error, self.chi_error, self.e, self.upsilon_error,
-                self.h
-            ]))
+            np.array([self.u_error, self.chi_error, self.e, self.upsilon_error, self.h])
+        )
         self.past_actions.append(self.vessel.input)
 
         if self.path:
-            self.prog = self.path.get_closest_u(self.vessel.position,
-                                                self.waypoint_index)
+            self.prog = self.path.get_closest_u(
+                self.vessel.position, self.waypoint_index
+            )
             self.path_prog.append(self.prog)
 
             # Check if a waypoint is passed
@@ -210,11 +212,11 @@ class PathFollowAuv3D(gym.Env):
 
     def observe(self, nu_c):
         """
-        Returns observations of the environment. 
+        Returns observations of the environment.
         """
 
         # TODO: use less magical indexing?
-        obs = np.zeros((self.n_observations, ))
+        obs = np.zeros((self.n_observations,))
 
         # surge, sway, heave
         obs[0] = np.clip(self.vessel.relative_velocity[0] / 2, -1, 1)
@@ -239,25 +241,36 @@ class PathFollowAuv3D(gym.Env):
 
     def step_reward(self, obs, action):
         """
-        Calculates the reward function for one time step. Also checks if the episode should end. 
+        Calculates the reward function for one time step. Also checks if the episode should end.
         """
         done = False
         step_reward = 0
 
-        reward_roll = self.vessel.roll**2 * self.reward_roll + self.vessel.angular_velocity[
-            0]**2 * self.reward_rollrate
-        reward_control = action[1]**2 * self.reward_use_rudder + action[
-            2]**2 * self.reward_use_elevator
-        reward_path_following = self.chi_error**2 * self.reward_heading_error + self.upsilon_error**2 * self.reward_pitch_error
+        reward_roll = (
+            self.vessel.roll**2 * self.reward_roll
+            + self.vessel.angular_velocity[0] ** 2 * self.reward_rollrate
+        )
+        reward_control = (
+            action[1] ** 2 * self.reward_use_rudder
+            + action[2] ** 2 * self.reward_use_elevator
+        )
+        reward_path_following = (
+            self.chi_error**2 * self.reward_heading_error
+            + self.upsilon_error**2 * self.reward_pitch_error
+        )
 
-        step_reward = self.lambda_reward * reward_path_following + reward_roll + reward_control
+        step_reward = (
+            self.lambda_reward * reward_path_following + reward_roll + reward_control
+        )
         self.reward += step_reward
 
         end_cond_1 = self.reward < self.min_reward
         end_cond_2 = self.total_t_steps >= self.max_t_steps
-        end_cond_3 = np.linalg.norm(
-            self.path.get_endpoint() - self.vessel.position
-        ) < self.accept_rad and self.waypoint_index == self.n_waypoints - 2
+        end_cond_3 = (
+            np.linalg.norm(self.path.get_endpoint() - self.vessel.position)
+            < self.accept_rad
+            and self.waypoint_index == self.n_waypoints - 2
+        )
         end_cond_4 = abs(self.prog - self.path.length) <= self.accept_rad / 2.0
 
         if end_cond_1 or end_cond_2 or end_cond_3 or end_cond_4:
@@ -271,8 +284,11 @@ class PathFollowAuv3D(gym.Env):
             if end_cond_4:
                 print("Progression larger than end of path!")
 
-            print("Episode finished after {} timesteps with reward: {}".format(
-                self.total_t_steps, self.reward.round(1)))
+            print(
+                "Episode finished after {} timesteps with reward: {}".format(
+                    self.total_t_steps, self.reward.round(1)
+                )
+            )
             done = True
         return done, step_reward
 
@@ -282,7 +298,8 @@ class PathFollowAuv3D(gym.Env):
         """
         # Update cruise speed error
         self.u_error = np.clip(
-            (self.cruise_speed - self.vessel.relative_velocity[0]) / 2, -1, 1)
+            (self.cruise_speed - self.vessel.relative_velocity[0]) / 2, -1, 1
+        )
         self.chi_error = 0.0
         self.e = 0.0
         self.upsilon_error = 0.0  # TODO remove?
@@ -294,8 +311,9 @@ class PathFollowAuv3D(gym.Env):
 
         # Calculate tracking errors
         SF_rotation = geom.Rzyx(0, upsilon_p, chi_p)  # Serret-Frenet frame
-        epsilon = np.transpose(SF_rotation).dot(self.vessel.position -
-                                                self.path(self.prog))
+        epsilon = np.transpose(SF_rotation).dot(
+            self.vessel.position - self.path(self.prog)
+        )
         e = epsilon[1]
         h = epsilon[2]
 
@@ -304,13 +322,13 @@ class PathFollowAuv3D(gym.Env):
         upsilon_r = np.arctan2(h, np.sqrt(e**2 + self.la_dist**2))
         chi_d = chi_p + chi_r
         upsilon_d = upsilon_p + upsilon_r
-        self.chi_error = np.clip(
-            geom.ssa(self.vessel.chi - chi_d) / np.pi, -1, 1)
-        #self.e = np.clip(e/12, -1, 1)
+        self.chi_error = np.clip(geom.ssa(self.vessel.chi - chi_d) / np.pi, -1, 1)
+        # self.e = np.clip(e/12, -1, 1)
         self.e = e
         self.upsilon_error = np.clip(
-            geom.ssa(self.vessel.upsilon - upsilon_d) / np.pi, -1, 1)
-        #self.h = np.clip(h/12, -1, 1)
+            geom.ssa(self.vessel.upsilon - upsilon_d) / np.pi, -1, 1
+        )
+        # self.h = np.clip(h/12, -1, 1)
         self.h = h
 
     def plot3D(self, wps_on=True):
@@ -323,18 +341,17 @@ class PathFollowAuv3D(gym.Env):
     def _axis_equal3d(self, ax):
         """
         Shifts axis in 3D plots to be equal. Especially useful when plotting obstacles, so they appear spherical.
-        
+
         Parameters:
         ----------
         ax : matplotlib.axes
-            The axes to be shifted. 
+            The axes to be shifted.
         """
-        extents = np.array(
-            [getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
+        extents = np.array([getattr(ax, "get_{}lim".format(dim))() for dim in "xyz"])
         sz = extents[:, 1] - extents[:, 0]
         centers = np.mean(extents, axis=1)
         maxsize = max(abs(sz))
         r = maxsize / 2
-        for ctr, dim in zip(centers, 'xyz'):
-            getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
+        for ctr, dim in zip(centers, "xyz"):
+            getattr(ax, "set_{}lim".format(dim))(ctr - r, ctr + r)
         return ax

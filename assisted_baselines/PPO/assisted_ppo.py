@@ -10,7 +10,11 @@ from torch.nn import functional as F
 
 from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
 from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedule
-from stable_baselines3.common.utils import explained_variance, get_schedule_fn, obs_as_tensor
+from stable_baselines3.common.utils import (
+    explained_variance,
+    get_schedule_fn,
+    obs_as_tensor,
+)
 from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
 from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.common.callbacks import BaseCallback
@@ -101,14 +105,14 @@ class AssistedPPO(OnPolicyAlgorithm):
         device: Union[th.device, str] = "auto",
         _init_setup_model: bool = True,
     ):
-        
+
         # Add the required kwargs to the AssistedPolicy automagically
         if policy_kwargs:
             assisted_policy_kwargs = {
                 # "assistant": assistant,
                 "action_mask_schedule": action_mask_schedule,
-                **policy_kwargs
-            } 
+                **policy_kwargs,
+            }
         else:
             assisted_policy_kwargs = {
                 # "assistant": assistant,
@@ -125,7 +129,7 @@ class AssistedPPO(OnPolicyAlgorithm):
             ent_coef=ent_coef,
             vf_coef=vf_coef,
             max_grad_norm=max_grad_norm,
-            use_sde=False, # use_sde,
+            use_sde=False,  # use_sde,
             sde_sample_freq=sde_sample_freq,
             tensorboard_log=tensorboard_log,
             policy_kwargs=assisted_policy_kwargs,
@@ -186,7 +190,6 @@ class AssistedPPO(OnPolicyAlgorithm):
         if _init_setup_model:
             self._setup_model()
 
-
     def _setup_model(self) -> None:
         super(AssistedPPO, self)._setup_model()
 
@@ -194,7 +197,10 @@ class AssistedPPO(OnPolicyAlgorithm):
         self.clip_range = get_schedule_fn(self.clip_range)
         if self.clip_range_vf is not None:
             if isinstance(self.clip_range_vf, (float, int)):
-                assert self.clip_range_vf > 0, "`clip_range_vf` must be positive, " "pass `None` to deactivate vf clipping"
+                assert self.clip_range_vf > 0, (
+                    "`clip_range_vf` must be positive, "
+                    "pass `None` to deactivate vf clipping"
+                )
 
             self.clip_range_vf = get_schedule_fn(self.clip_range_vf)
 
@@ -203,6 +209,12 @@ class AssistedPPO(OnPolicyAlgorithm):
         Update policy using the currently gathered rollout buffer.
         """
         # Switch to train mode (this affects batch norm / dropout)
+        print(
+            "Entered assisted ppo train. num_timesteps:",
+            self.num_timesteps,
+            "total timesteps",
+            self._total_timesteps,
+        )
         self.policy.set_training_mode(True)
         # Update optimizer learning rate
         self._update_learning_rate(self.policy.optimizer)
@@ -217,15 +229,13 @@ class AssistedPPO(OnPolicyAlgorithm):
         clip_fractions = []
 
         continue_training = True
-        
-        first_batch = True
 
+        first_batch = True
 
         # train for n_epochs epochs
         for epoch in range(self.n_epochs):
             approx_kl_divs = []
             # Do a complete pass on the rollout buffer
-
 
             for rollout_data in self.rollout_buffer.get(self.batch_size):
                 actions = rollout_data.actions
@@ -237,13 +247,17 @@ class AssistedPPO(OnPolicyAlgorithm):
                 # if self.use_sde:
                 #     self.policy.reset_noise(self.batch_size)
 
-                values, log_prob, entropy = self.policy.evaluate_actions(rollout_data.observations, actions)
+                values, log_prob, entropy = self.policy.evaluate_actions(
+                    rollout_data.observations, actions
+                )
                 # values, log_prob, entropy = self.policy.evaluate_masked_actions(rollout_data.observations, actions)
                 values = values.flatten()
                 # Normalize advantage
                 advantages = rollout_data.advantages
                 if self.normalize_advantage:
-                    advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+                    advantages = (advantages - advantages.mean()) / (
+                        advantages.std() + 1e-8
+                    )
 
                 # ratio between old and new policy, should be one at the first iteration
                 ratio = th.exp(log_prob - rollout_data.old_log_prob)
@@ -260,10 +274,11 @@ class AssistedPPO(OnPolicyAlgorithm):
                     print("log_prob\t", log_prob.shape)
                     print("ratio\t\t", ratio.shape)
 
-                
                 # clipped surrogate loss
                 policy_loss_1 = advantages * ratio
-                policy_loss_2 = advantages * th.clamp(ratio, 1 - clip_range, 1 + clip_range)
+                policy_loss_2 = advantages * th.clamp(
+                    ratio, 1 - clip_range, 1 + clip_range
+                )
                 policy_loss = -th.min(policy_loss_1, policy_loss_2).mean()
 
                 # Logging
@@ -293,7 +308,11 @@ class AssistedPPO(OnPolicyAlgorithm):
 
                 entropy_losses.append(entropy_loss.item())
 
-                loss = policy_loss + self.ent_coef * entropy_loss + self.vf_coef * value_loss
+                loss = (
+                    policy_loss
+                    + self.ent_coef * entropy_loss
+                    + self.vf_coef * value_loss
+                )
 
                 # Calculate approximate form of reverse KL Divergence for early stopping
                 # see issue #417: https://github.com/DLR-RM/stable-baselines3/issues/417
@@ -301,27 +320,35 @@ class AssistedPPO(OnPolicyAlgorithm):
                 # and Schulman blog: http://joschu.net/blog/kl-approx.html
                 with th.no_grad():
                     log_ratio = log_prob - rollout_data.old_log_prob
-                    approx_kl_div = th.mean((th.exp(log_ratio) - 1) - log_ratio).cpu().numpy()
+                    approx_kl_div = (
+                        th.mean((th.exp(log_ratio) - 1) - log_ratio).cpu().numpy()
+                    )
                     approx_kl_divs.append(approx_kl_div)
 
                 if self.target_kl is not None and approx_kl_div > 1.5 * self.target_kl:
                     continue_training = False
                     if self.verbose >= 1:
-                        print(f"Early stopping at step {epoch} due to reaching max kl: {approx_kl_div:.2f}")
+                        print(
+                            f"Early stopping at step {epoch} due to reaching max kl: {approx_kl_div:.2f}"
+                        )
                     break
 
                 # Optimization step
                 self.policy.optimizer.zero_grad()
                 loss.backward()
                 # Clip grad norm
-                th.nn.utils.clip_grad_norm_(self.policy.parameters(), self.max_grad_norm)
+                th.nn.utils.clip_grad_norm_(
+                    self.policy.parameters(), self.max_grad_norm
+                )
                 self.policy.optimizer.step()
 
             if not continue_training:
                 break
 
         self._n_updates += self.n_epochs
-        explained_var = explained_variance(self.rollout_buffer.values.flatten(), self.rollout_buffer.returns.flatten())
+        explained_var = explained_variance(
+            self.rollout_buffer.values.flatten(), self.rollout_buffer.returns.flatten()
+        )
 
         # Train is called once per rollout - get and set assistant mask for next rollout
         self._first_rollout = False
@@ -344,14 +371,14 @@ class AssistedPPO(OnPolicyAlgorithm):
             self.logger.record("train/clip_range_vf", clip_range_vf)
 
     def collect_rollouts(
-            self,
-            env: VecEnv,
-            callback: BaseCallback,
-            rollout_buffer: RolloutBuffer,
-            n_rollout_steps: int,
-        ) -> bool:
+        self,
+        env: VecEnv,
+        callback: BaseCallback,
+        rollout_buffer: RolloutBuffer,
+        n_rollout_steps: int,
+    ) -> bool:
         """
-        Collect experiences using the current policy, assistant and mask and 
+        Collect experiences using the current policy, assistant and mask and
         fill a ``RolloutBuffer``.
 
         Code is taken from OnPolicyAlgorithm and modified to support masking
@@ -384,15 +411,22 @@ class AssistedPPO(OnPolicyAlgorithm):
 
         # print(f"type {type(self.env)}")
         if isinstance(self.env, VecEnv):
-            assert env.env_is_wrapped(AssistantWrapper), "VecEnv environments are not wrapped by a AssistantWrapper!"
+            assert env.env_is_wrapped(
+                AssistantWrapper
+            ), "VecEnv environments are not wrapped by a AssistantWrapper!"
         else:
-            assert isinstance(self.env, AssistantWrapper), "Environment isn't wrapped with AssistantWrapper!"
-        
+            assert isinstance(
+                self.env, AssistantWrapper
+            ), "Environment isn't wrapped with AssistantWrapper!"
 
         # assert isinstance(self.env, AssistantWrapper)
 
         while n_steps < n_rollout_steps:
-            if self.use_sde and self.sde_sample_freq > 0 and n_steps % self.sde_sample_freq == 0:
+            if (
+                self.use_sde
+                and self.sde_sample_freq > 0
+                and n_steps % self.sde_sample_freq == 0
+            ):
                 # Sample a new noise matrix
                 self.policy.reset_noise(env.num_envs)
 
@@ -400,30 +434,36 @@ class AssistedPPO(OnPolicyAlgorithm):
                 # Convert to pytorch tensor or to TensorDict
                 obs_tensor = obs_as_tensor(self._last_obs, self.device)
                 agent_actions, values, log_probs = self.policy(obs_tensor)
-            
+
             if isinstance(self.env, VecEnv):
                 assistant_actions = self.env.env_method("get_assistant_action")
                 # print("agent_actions", agent_actions)
                 # print("assistant_actions", assistant_actions)
-                assistant_actions = np.stack(assistant_actions, axis=0).astype(np.float32)
-                
+                assistant_actions = np.stack(assistant_actions, axis=0).astype(
+                    np.float32
+                )
+
                 # TODO flatten the assistant actions
 
             # assistant_action = self.env.get_assistant_action(agent_actions=agent_actions)
-            
+
             agent_actions = agent_actions.cpu().numpy()
 
             # print("agent actions dtype", agent_actions.dtype)
             # print("assistant actions dtype", assistant_actions.dtype)
-            
+
             # Apply the mask to the actions
-            actions = self.policy.current_mask.mix_np(assistant_actions=assistant_actions, agent_actions=agent_actions)
+            actions = self.policy.current_mask.mix_np(
+                assistant_actions=assistant_actions, agent_actions=agent_actions
+            )
 
             # Rescale and perform action
             clipped_actions = actions
             # Clip the actions to avoid out of bound error
             if isinstance(self.action_space, gym.spaces.Box):
-                clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
+                clipped_actions = np.clip(
+                    actions, self.action_space.low, self.action_space.high
+                )
 
             new_obs, rewards, dones, infos = env.step(clipped_actions)
 
@@ -449,12 +489,21 @@ class AssistedPPO(OnPolicyAlgorithm):
                     and infos[idx].get("terminal_observation") is not None
                     and infos[idx].get("TimeLimit.truncated", False)
                 ):
-                    terminal_obs = self.policy.obs_to_tensor(infos[idx]["terminal_observation"])[0]
+                    terminal_obs = self.policy.obs_to_tensor(
+                        infos[idx]["terminal_observation"]
+                    )[0]
                     with th.no_grad():
                         terminal_value = self.policy.predict_values(terminal_obs)[0]
                     rewards[idx] += self.gamma * terminal_value
 
-            rollout_buffer.add(self._last_obs, actions, rewards, self._last_episode_starts, values, log_probs)
+            rollout_buffer.add(
+                self._last_obs,
+                actions,
+                rewards,
+                self._last_episode_starts,
+                values,
+                log_probs,
+            )
             self._last_obs = new_obs
             self._last_episode_starts = dones
 
@@ -480,7 +529,6 @@ class AssistedPPO(OnPolicyAlgorithm):
         eval_log_path: Optional[str] = None,
         reset_num_timesteps: bool = True,
     ) -> "AssistedPPO":
-
 
         return super(AssistedPPO, self).learn(
             total_timesteps=total_timesteps,
