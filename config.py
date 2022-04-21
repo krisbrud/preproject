@@ -32,7 +32,7 @@ class HyperparamConfig:
     # Also see https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#parameters
     # for more details
     n_steps: int = 1024
-    learning_rate: float = 5e-5  # 1e-3
+    learning_rate: float = 1e-3
     batch_size: int = 1024
     gae_lambda: float = 0.95
     gamma: float = 0.999  # Discount factor
