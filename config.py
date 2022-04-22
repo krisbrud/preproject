@@ -155,7 +155,8 @@ def train_rudder_then_elevator_config():
             {
                 0: mask_rudder_only,
                 1500000: mask_elevator_only,  # Switch after 1.5M to show problems with value function
-            }
+            },
+            total_timesteps=cfg.train.total_timesteps,
         )
     )
 
