@@ -184,7 +184,7 @@ def get_config() -> Config:
         "train-rudder": train_rudder_config,
         "train-elevator": train_elevator_config,
         "train-rudder-and-elevator": train_rudder_and_elevator_config,
-        "train-rudder-then-elevator-config": train_rudder_then_elevator_config,
+        "train-rudder-then-elevator": train_rudder_then_elevator_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(

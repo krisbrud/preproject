@@ -144,10 +144,9 @@ def train():
         tracker.log_params(dataclasses.asdict(cfg.experiment), prefix="experiment")
         tracker.log_params(dataclasses.asdict(cfg.system), prefix="system")
         train_dict = dataclasses.asdict(cfg.train)
-        print("train dict keys", train_dict.keys())
         train_dict.pop(
             "mlflow_tracking_uri"
-        )  # Too long to log in mlflow. Also logged automatically
+        )  # Too long to log in mlflow?. Also logged implicitly?
         tracker.log_params(train_dict, prefix="train")
         # Log PID gains:
         tracker.log_params(
@@ -179,7 +178,7 @@ def train():
     tic = time.perf_counter()
     agent.learn(
         total_timesteps=cfg.train.total_timesteps,
-        tb_log_name="PPO",
+        tb_log_name=cfg.experiment.name,  # "PPO",
         callback=save_and_track_callback,
     )
     toc = time.perf_counter()
