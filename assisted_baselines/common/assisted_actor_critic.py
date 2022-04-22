@@ -184,10 +184,9 @@ class AssistedActorCriticPolicy(BasePolicy):
 
         self._build(lr_schedule)
 
-    def update_mask(self, timestep):
-        self.current_mask: ActiveActionsMask = self.action_mask_schedule.get_mask(
-            timestep=timestep
-        )
+    def set_mask(self, mask):
+        print("updating policy mask")
+        self.current_mask = mask
 
     def _get_constructor_parameters(self) -> Dict[str, Any]:
         data = super()._get_constructor_parameters()

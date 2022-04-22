@@ -8,6 +8,7 @@ import numpy as np
 
 from assisted_baselines.common.mask import ActiveActionsMask
 
+
 class BaseAssistant(ABC):
     def __init__(self, n_actions):
         self.n_actions = n_actions
@@ -15,14 +16,16 @@ class BaseAssistant(ABC):
     @abstractmethod
     def get_action(self, observation: np.ndarray) -> np.ndarray:
         """
-        The get_action method should return the actions suggested by the assistant. 
+        The get_action method should return the actions suggested by the assistant.
         If an assistant is only implemented for some of the actions, return zeros for the other
         actions and make sure the action is not used through the ActiveActionMask.
         """
         pass
 
     @abstractmethod
-    def _preprocess_observation(self, observation: np.ndarray) -> Union[np.ndarray, torch.Tensor]:
+    def _preprocess_observation(
+        self, observation: np.ndarray
+    ) -> Union[np.ndarray, torch.Tensor]:
         """
         Preprocesses the observation so that it may be given in the format required by the assistant
         """
@@ -43,16 +46,27 @@ class AssistantWrapper(gym.core.Wrapper):
     Also allows for the owner of the object to update the mask.
     """
 
-    def __init__(self, env, assistant: Union[BaseAssistant, None]=None):
+    def __init__(
+        self,
+        env,
+        assistant: Union[BaseAssistant, None] = None,
+        initial_mask: ActiveActionsMask = None,
+    ):
         super().__init__(env)
 
         if assistant is None:
             raise ValueError("AssistantWrapper called without assistant!")
-        
+
         self.assistant = assistant
 
-        self._assistant_action = None
+        self.set_mask(initial_mask)
         self._prev_obs = env.reset()
+        self._assistant_action = None
+        self.get_assistant_action()
+
+    def set_mask(self, mask: ActiveActionsMask):
+        print("setting mask in wrapper", mask)
+        self._mask = mask
 
     def observation(self, observation):
         # No action needed
@@ -62,9 +76,9 @@ class AssistantWrapper(gym.core.Wrapper):
         """
         Gets the assistants predicted action.
         """
-        # Avoid evaluating the assistant action more than once by caching 
+        # Avoid evaluating the assistant action more than once by caching
         # the assistant action every step.
-        # As the assistant may be recurrent (and thus stateful), it 
+        # As the assistant may be recurrent (and thus stateful), it
         # should only be called once per step.
         if self._assistant_action is not None:
             return self._assistant_action
@@ -76,15 +90,38 @@ class AssistantWrapper(gym.core.Wrapper):
         return self._assistant_action
 
     def step(self, action):
-        self._assistant_action = None # Reset assistant action caching
+        # print("assistantwrapper step")
+
+        if self._assistant_action is None:
+            self.get_assistant_action()
+
+        # Apply the masked action
+        if self._mask is not None:
+            # print("in mask step:")
+            # print("type agent action", type(action))
+            # print("type assistant action", type(self._assistant_action))
+            action = self._mask.mix_np(
+                agent_actions=action, assistant_actions=self._assistant_action
+            )
+
         obs, reward, done, info = super().step(action)
-        self._prev_obs = obs # Save for calculating next assistant action
+        self._prev_obs = obs  # Save for calculating next assistant action
+
+        self._assistant_action = None  # Reset assistant action caching
 
         return obs, reward, done, info
 
     def reset(self, **kwargs):
         self.assistant.reset()
 
-        self._assistant_action = None # Reset assistant action caching
-        
+        self._assistant_action = None  # Reset assistant action caching
+
         return super().reset(**kwargs)
+
+    # def __getattr__(self, __name: str):
+    #     # TODO Maybe remove
+    #     # If we try to access an attribute that is not found elsewhere, look
+    #     # inside the environment.
+
+    #     # This is used for plotting in this implementation
+    #     return getattr(self.env, __name)

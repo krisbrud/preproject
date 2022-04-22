@@ -5,6 +5,8 @@ import glob
 
 from pandas import DataFrame
 from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
+from assisted_baselines.common.assistant import AssistantWrapper
 
 # from gym_auv.utils.controllers import PI, PID
 from assisted_baselines.common.assistants.pid import PIController, PIDController
@@ -68,18 +70,30 @@ def simulate_environment(env, agent):
 
     done = False
     obs = env.reset()
+
+    # env.
+
     while not done:
-        action = agent.predict(obs, deterministic=True)[0]
+        action = np.array(agent.predict(obs, deterministic=True)[0])
+        # print("simulate environment action", action)
+        # assistant_action = env.get_assistant_action()
         obs, _, done, _ = env.step(action)
-    errors = np.array(env.get_attr("past_errors"))
-    time = np.array(env.get_attr("time")).reshape((env.get_attr("total_t_steps")[0], 1))
+
+    errors = np.array(env.past_errors)
+    # print("errors", errors)
+    time = np.array(env.time).reshape(-1, 1)
+    # print("time,", time)
+    # print('env.past_states,', env.past_states 0))x
+    # print('env.past_actions,', env.past_actions)
+    # print("errors,", errors)
+    # print('env.current_history,', env.current_history)
     sim_data = np.hstack(
         [
             time,
-            env.get_attr("past_states"),
-            env.get_attr("past_actions"),
+            env.past_states,
+            env.past_actions,
             errors,
-            env.get_attr("current_history"),
+            env.current_history,
         ]
     )
     df = DataFrame(sim_data, columns=labels)
@@ -97,10 +111,22 @@ def simulate_and_plot_agent(
     sim_df = simulate_environment(env, agent)
     sim_df.to_csv(r"simdata.csv")
     calculate_IAE(sim_df)
-    plot_attitude(sim_df, os.path.join(plot_dir, "attitude.png"))
-    plot_velocity(sim_df, os.path.join(plot_dir, "velocity.png"))
-    plot_angular_velocity(sim_df, os.path.join(plot_dir, "angular_velocity.png"))
-    plot_control_inputs([sim_df], os.path.join(plot_dir, "control_inputs.png"))
-    plot_control_errors([sim_df], os.path.join(plot_dir, "control_errors.png"))
-    plot_3d(env, sim_df, os.path.join(plot_dir, "trajectory_3d.png"))
-    plot_current_data(sim_df, os.path.join(plot_dir, "currents.png"))
+    plot_attitude(sim_df, plot_dir)
+    plot_velocity(sim_df, plot_dir)
+    plot_angular_velocity(sim_df, plot_dir)
+    plot_control_inputs([sim_df], plot_dir)
+    plot_control_errors([sim_df], plot_dir)
+    plot_3d(env, sim_df, plot_dir)
+    plot_current_data(sim_df, plot_dir)
+
+    return sim_df
+
+
+def plot_sim_df(sim_df, plot_dir):
+    calculate_IAE(sim_df)
+    plot_attitude(sim_df, plot_dir)
+    plot_velocity(sim_df, plot_dir)
+    plot_angular_velocity(sim_df, plot_dir)
+    plot_control_inputs([sim_df], plot_dir)
+    plot_control_errors([sim_df], plot_dir)
+    plot_current_data(sim_df, plot_dir)

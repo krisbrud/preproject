@@ -67,7 +67,7 @@ class PIDAssistant(BaseAssistant):
                  n_actions: int,
                  pid_controllers: List[PIDController],
                  pid_error_indices: List[int],
-                 use_noise=True,
+                 use_noise=False,
                  noise_std = 0.1):
         super(PIDAssistant, self).__init__(n_actions=n_actions)
         
@@ -79,23 +79,28 @@ class PIDAssistant(BaseAssistant):
 
     # TODO: Make observation preprocessing
     def _preprocess_observation(self, observation: np.ndarray) -> Union[np.ndarray, th.Tensor]:
-        relevant_observations = map(lambda idx: (-1) * observation[idx], self.pid_error_indices)
-        return relevant_observations
+        relevant_observations = list(map(lambda idx: observation[idx], self.pid_error_indices))
+        # Scale the observations
+        obs = relevant_observations * np.array([2.0, np.pi, np.pi])
+        return obs # relevant_observations
 
     def reset(self) -> None:
         for pid_controller in self.pid_controllers:
             pid_controller.reset()
 
-    def get_action(self, observation) -> th.Tensor:
+    def get_action(self, observation) -> np.ndarray:
         preprocessed_obs = self._preprocess_observation(observation)
-
-        assistant_actions = th.zeros(size=(self.n_actions,))
+        # print("(obs, preprocessed)", observation, preprocessed_obs)
+        assistant_actions = np.zeros(shape=(self.n_actions,), dtype=np.float32)
         
         for i, (obs, pid) in enumerate(zip(preprocessed_obs, self.pid_controllers)):
             assistant_actions[i] = pid.u(obs)
             
         if self.use_noise:
-            assistant_actions += th.randn_like(assistant_actions) * self.noise_std
+            pass
+            # assistant_actions += np.randn_like(assistant_actions) * self.noise_std
         
+        # print("pid actions: ", assistant_actions)
+
         return assistant_actions
             

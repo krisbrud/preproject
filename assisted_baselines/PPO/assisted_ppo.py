@@ -397,7 +397,7 @@ class AssistedPPO(OnPolicyAlgorithm):
         assert self._last_obs is not None, "No previous observation was provided"
         # Switch to eval mode (this affects batch norm / dropout)
         self.policy.set_training_mode(False)
-        self.policy.update_mask(timestep=self.num_timesteps)
+        self.update_mask()
 
         n_steps = 0
         rollout_buffer.reset()
@@ -516,6 +516,12 @@ class AssistedPPO(OnPolicyAlgorithm):
         callback.on_rollout_end()
 
         return True
+
+    def update_mask(self):
+        mask = self.action_mask_schedule.get_mask(timestep=self.num_timesteps)
+
+        self.policy.set_mask(mask)
+        # self.env.env_method("set_mask", mask)
 
     def learn(
         self,
