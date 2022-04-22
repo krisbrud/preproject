@@ -45,11 +45,11 @@ class HyperparamConfig:
 @dataclass
 class TrainConfig:
     # Number of parallel environments to use with SubProcVecEnv
-    num_envs: int = 1  # 10  # Test if this makes a difference on total timesteps
+    num_envs: int =  10  # Test if this makes a difference on total timesteps
     # Total timesteps to run training
     total_timesteps: int = int(30e6)  # int(100e3)
     # How many timesteps between each time agent is saved to disk and MLFlow
-    save_freq: int = int(10e3)  # int(100e3)
+    save_freq: int = int(100e3)  # int(100e3)
     # MLFlow Tracking URI for logging metrics and artifacts.
     # Set to None if it's not going to be used.
     mlflow_tracking_uri: str = "azureml://northeurope.api.azureml.ms/mlflow/v1.0/subscriptions/3165a1c1-fd45-4c8d-938e-0058c823f960/resourceGroups/aml-playground/providers/Microsoft.MachineLearningServices/workspaces/aml-playground"
