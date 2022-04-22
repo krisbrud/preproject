@@ -32,7 +32,7 @@ class HyperparamConfig:
     # Also see https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#parameters
     # for more details
     n_steps: int = 1024
-    learning_rate: float = 1e-4
+    learning_rate: float = 5e-5
     batch_size: int = 1024
     gae_lambda: float = 0.95
     gamma: float = 0.999  # Discount factor
@@ -45,7 +45,7 @@ class HyperparamConfig:
 @dataclass
 class TrainConfig:
     # Number of parallel environments to use with SubProcVecEnv
-    num_envs: int = 10  # Test if this makes a difference on total timesteps
+    num_envs: int = 1  # 10  # Test if this makes a difference on total timesteps
     # Total timesteps to run training
     total_timesteps: int = int(30e6)  # int(100e3)
     # How many timesteps between each time agent is saved to disk and MLFlow

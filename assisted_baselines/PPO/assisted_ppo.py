@@ -247,10 +247,12 @@ class AssistedPPO(OnPolicyAlgorithm):
                 # if self.use_sde:
                 #     self.policy.reset_noise(self.batch_size)
 
-                values, log_prob, entropy = self.policy.evaluate_actions(
+                # values, log_prob, entropy = self.policy.evaluate_actions(
+                #     rollout_data.observations, actions
+                # )
+                values, log_prob, entropy = self.policy.evaluate_masked_actions(
                     rollout_data.observations, actions
                 )
-                # values, log_prob, entropy = self.policy.evaluate_masked_actions(rollout_data.observations, actions)
                 values = values.flatten()
                 # Normalize advantage
                 advantages = rollout_data.advantages
@@ -276,11 +278,12 @@ class AssistedPPO(OnPolicyAlgorithm):
 
                 # clipped surrogate loss
                 policy_loss_1 = advantages * ratio
+                policy_loss_1.retain_grad()
                 policy_loss_2 = advantages * th.clamp(
                     ratio, 1 - clip_range, 1 + clip_range
                 )
                 policy_loss = -th.min(policy_loss_1, policy_loss_2).mean()
-
+                # policy_loss.retain_grad()
                 # Logging
                 pg_losses.append(policy_loss.item())
                 clip_fraction = th.mean((th.abs(ratio - 1) > clip_range).float()).item()
@@ -297,6 +300,7 @@ class AssistedPPO(OnPolicyAlgorithm):
                     )
                 # Value loss using the TD(gae_lambda) target
                 value_loss = F.mse_loss(rollout_data.returns, values_pred)
+                # value_loss.retain_grad()
                 value_losses.append(value_loss.item())
 
                 # Entropy loss favor exploration
@@ -336,6 +340,16 @@ class AssistedPPO(OnPolicyAlgorithm):
                 # Optimization step
                 self.policy.optimizer.zero_grad()
                 loss.backward()
+
+                # print("loss", loss)
+                # print("loss grad", loss.grad)
+
+                # print("policy loss 1", policy_loss_1)
+                # print("policy loss 1 grad max", th.max(policy_loss_1.grad))
+                # print("policy loss 1 grad min", th.min(policy_loss_1.grad))
+                # print("policy loss 1 size", policy_loss_1.size())
+                # print("policy loss 1 grad", policy_loss_1.grad)
+
                 # Clip grad norm
                 th.nn.utils.clip_grad_norm_(
                     self.policy.parameters(), self.max_grad_norm
