@@ -8,7 +8,11 @@ from dataclasses import dataclass
 from assisted_baselines.common.assistants.pid import PIDGains
 from assisted_baselines.common.mask import BaseMaskSchedule
 from assisted_baselines.common.schedules.checkpoint_schedule import CheckpointSchedule
-from utils.auv_masks import mask_rudder_and_elevator, mask_rudder_only
+from utils.auv_masks import (
+    mask_rudder_and_elevator,
+    mask_rudder_only,
+    mask_elevator_only,
+)
 
 
 @dataclass
@@ -141,6 +145,23 @@ def train_rudder_config():
     return cfg
 
 
+def train_rudder_then_elevator_config():
+    cfg = _get_default_config()
+    # Train rudder then switch to elevator after 1.5 timesteps
+    cfg.experiment.name = "train-rudder-then-elevator-3M"
+    cfg.train.total_timesteps = int(3e6)
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {
+                0: mask_rudder_only,
+                1500000: mask_elevator_only,  # Switch after 1.5M to show problems with value function
+            }
+        )
+    )
+
+    return cfg
+
+
 def train_elevator_config():
     # Train only elevator according to Simentha's paper draft
     cfg = _get_default_config()
@@ -162,7 +183,8 @@ def get_config() -> Config:
     available_configs = {
         "train-rudder": train_rudder_config,
         "train-elevator": train_elevator_config,
-        "train-rudder-elevator": train_rudder_and_elevator_config,
+        "train-rudder-and-elevator": train_rudder_and_elevator_config,
+        "train-rudder-then-elevator-config": train_rudder_then_elevator_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
