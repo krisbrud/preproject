@@ -45,7 +45,7 @@ class HyperparamConfig:
 @dataclass
 class TrainConfig:
     # Number of parallel environments to use with SubProcVecEnv
-    num_envs: int = 1  # 10  # Test if this makes a difference on total timesteps
+    num_envs: int = 10  # Test if this makes a difference on total timesteps
     # Total timesteps to run training
     total_timesteps: int = int(30e6)  # int(100e3)
     # How many timesteps between each time agent is saved to disk and MLFlow
