@@ -270,6 +270,11 @@ class AssistedActorCriticPolicy(BasePolicy):
             raise NotImplementedError(f"Unsupported distribution '{self.action_dist}'.")
 
         self.value_net = nn.Linear(self.mlp_extractor.latent_dim_vf, 1)
+
+        self.assistant_value_net = nn.Linear(
+            self.mlp_extractor.latent_dim_vf, 1
+        )  # Identical to value net
+
         # Init weights: use orthogonal initialization
         # with small initial weight for the output
         if self.ortho_init:
@@ -282,6 +287,7 @@ class AssistedActorCriticPolicy(BasePolicy):
                 self.mlp_extractor: np.sqrt(2),
                 self.action_net: 0.01,
                 self.value_net: 1,
+                self.assistant_value_net: 1,
             }
             for module, gain in module_gains.items():
                 module.apply(partial(self.init_weights, gain=gain))
@@ -399,17 +405,17 @@ class AssistedActorCriticPolicy(BasePolicy):
         values = self.value_net(latent_vf)
         return values, log_prob, entropy
 
-    def action_net_value_estimate(self, obs: th.Tensor) -> th.Tensor:
-        """
-        Get the value estimate from the action net's auxillary value head. Useful for PPG.
+    # def action_net_value_estimate(self, obs: th.Tensor) -> th.Tensor:
+    #     """
+    #     Get the value estimate from the action net's auxillary value head. Useful for PPG.
 
-        :param obs:
-        :return: action net value head estimate
-        """
-        features = self.extract_features(obs)
-        latent_pi, _ = self.mlp_extractor(features)
-        pi_value_estimate = self.action_net_value_head(latent_pi)
-        return pi_value_estimate
+    #     :param obs:
+    #     :return: action net value head estimate
+    #     """
+    #     features = self.extract_features(obs)
+    #     latent_pi, _ = self.mlp_extractor(features)
+    #     pi_value_estimate = self.action_net_value_head(latent_pi)
+    #     return pi_value_estimate
 
     def _get_masked_distribution(
         self, distribution: DiagGaussianDistribution
@@ -439,3 +445,19 @@ class AssistedActorCriticPolicy(BasePolicy):
         features = self.extract_features(obs)
         latent_vf = self.mlp_extractor.forward_critic(features)
         return self.value_net(latent_vf)
+
+    def predict_agent_and_expert_values(self, obs: th.Tensor) -> th.Tensor:
+        """
+        Get the estimated values of both the agent's policy network as well as the
+        predicted value of the return of taking a step from the assistant given the current
+        observation
+        :param obs:
+        :return: estimated values of agent actions, estimated value of expert actions
+        """
+        features = self.extract_features(obs)
+        latent_vf = self.mlp_extractor.forward_critic(features)
+
+        agent_value = self.value_net(latent_vf)
+        assistant_value = self.assistant_value_net(latent_vf)
+
+        return agent_value, assistant_value

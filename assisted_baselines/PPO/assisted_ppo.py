@@ -193,6 +193,9 @@ class AssistedPPO(OnPolicyAlgorithm):
     def _setup_model(self) -> None:
         super(AssistedPPO, self)._setup_model()
 
+        # Initialize auxillary value head for assistant
+        self.policy.initialize_assistant_value_head()
+
         # Initialize schedules for policy/value clipping
         self.clip_range = get_schedule_fn(self.clip_range)
         if self.clip_range_vf is not None:
