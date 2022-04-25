@@ -184,10 +184,15 @@ class AssistedActorCriticPolicy(BasePolicy):
 
         self._build(lr_schedule)
 
-    def update_mask(self, timestep):
-        self.current_mask: ActiveActionsMask = self.action_mask_schedule.get_mask(
-            timestep=timestep
-        )
+    def set_mask(self, mask):
+        print("updating policy mask")
+        self.current_mask = mask
+
+    def set_training_mode(self, mode: bool) -> None:
+        # Since we want to have a mask in the assistant wrapper when evaluating,
+        # but not when training (because of performance)
+        # this is a neat way to achieve this without modifying other code too much.
+        return super().set_training_mode(mode)
 
     def _get_constructor_parameters(self) -> Dict[str, Any]:
         data = super()._get_constructor_parameters()

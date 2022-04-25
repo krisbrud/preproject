@@ -229,6 +229,7 @@ class PathFollowAuv3D(gym.Env):
         obs[6] = np.clip(self.vessel.angular_velocity[0] / 1.2, -1, 1)
         obs[7] = np.clip(self.vessel.angular_velocity[1] / 0.4, -1, 1)
         obs[8] = np.clip(self.vessel.angular_velocity[2] / 0.4, -1, 1)
+        # obs[9] = np.clip(self.u_error / 2, -1, 1)  # surge error
         obs[9] = np.clip(self.u_error / 2, -1, 1)  # surge error
         obs[10] = np.clip(self.chi_error / np.pi, -1, 1)  # course error
         obs[11] = np.clip(self.upsilon_error / np.pi, -1, 1)  # elevation error
@@ -297,9 +298,15 @@ class PathFollowAuv3D(gym.Env):
         Updates and sets the control errors.
         """
         # Update cruise speed error
-        self.u_error = np.clip(
-            (self.cruise_speed - self.vessel.relative_velocity[0]) / 2, -1, 1
-        )
+        # print("cruise speed", self.cruise_speed)
+        # print("relative_velocity", self.vessel.relative_velocity)
+        # self.u_error = np.clip(
+        #     (self.cruise_speed - self.vessel.relative_velocity[0]) / 2, -1, 1
+        # )
+        self.u_error = (
+            self.cruise_speed - self.vessel.relative_velocity[0]
+        )  # Don't normalize twice
+        # print("u_error", self.u_error)
         self.chi_error = 0.0
         self.e = 0.0
         self.upsilon_error = 0.0  # TODO remove?
