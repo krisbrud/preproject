@@ -313,11 +313,12 @@ class AssistedActorCriticPolicy(BasePolicy):
         features = self.extract_features(obs)
         latent_pi, latent_vf = self.mlp_extractor(features)
         # Evaluate the values for the given observations
-        values = self.value_net(latent_vf)
+        agent_values = self.value_net(latent_vf)
+        assistant_values = self.assistant_value_net(latent_vf)
         distribution = self._get_action_dist_from_latent(latent_pi)
         actions = distribution.get_actions(deterministic=deterministic)
         log_prob = distribution.log_prob(actions)
-        return actions, values, log_prob
+        return actions, agent_values, log_prob, assistant_values
 
     def _get_action_dist_from_latent(self, latent_pi: th.Tensor) -> Distribution:
         """
@@ -446,7 +447,9 @@ class AssistedActorCriticPolicy(BasePolicy):
         latent_vf = self.mlp_extractor.forward_critic(features)
         return self.value_net(latent_vf)
 
-    def predict_agent_and_expert_values(self, obs: th.Tensor) -> th.Tensor:
+    def predict_agent_and_expert_values(
+        self, obs: th.Tensor
+    ) -> Tuple[th.Tensor, th.Tensor]:
         """
         Get the estimated values of both the agent's policy network as well as the
         predicted value of the return of taking a step from the assistant given the current
@@ -457,7 +460,7 @@ class AssistedActorCriticPolicy(BasePolicy):
         features = self.extract_features(obs)
         latent_vf = self.mlp_extractor.forward_critic(features)
 
-        agent_value = self.value_net(latent_vf)
-        assistant_value = self.assistant_value_net(latent_vf)
+        agent_values = self.value_net(latent_vf)
+        assistant_values = self.assistant_value_net(latent_vf)
 
-        return agent_value, assistant_value
+        return agent_values, assistant_values

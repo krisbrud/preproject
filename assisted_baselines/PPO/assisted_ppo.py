@@ -23,6 +23,7 @@ from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
 
 from assisted_baselines.common.assistant import AssistantWrapper, BaseAssistant
 from assisted_baselines.common.assisted_actor_critic import AssistedActorCriticPolicy
+from assisted_baselines.common.assisted_rollout_buffer import AssistedRolloutBuffer
 from assisted_baselines.common.mask import BaseMaskSchedule
 
 
@@ -181,6 +182,10 @@ class AssistedPPO(OnPolicyAlgorithm):
         self.normalize_advantage = normalize_advantage
         self.target_kl = target_kl
 
+        # Overwrite rollout buffer class.
+        # Same arguments, so it is initialized in super()._setup_model()
+        self.buffer_cls = AssistedRolloutBuffer
+
         self.action_mask_schedule = action_mask_schedule
         # self.assistant = assistant
 
@@ -192,9 +197,6 @@ class AssistedPPO(OnPolicyAlgorithm):
 
     def _setup_model(self) -> None:
         super(AssistedPPO, self)._setup_model()
-
-        # Initialize auxillary value head for assistant
-        self.policy.initialize_assistant_value_head()
 
         # Initialize schedules for policy/value clipping
         self.clip_range = get_schedule_fn(self.clip_range)
@@ -256,6 +258,15 @@ class AssistedPPO(OnPolicyAlgorithm):
                 values, log_prob, entropy = self.policy.evaluate_masked_actions(
                     rollout_data.observations, actions
                 )
+
+                # assert isinstance(self.policy, AssistedActorCriticPolicy)
+                # (
+                #     agent_values,
+                #     assistant_values,
+                # ) = self.policy.predict_agent_and_expert_values(
+                #     rollout_data.observations
+                # )
+
                 values = values.flatten()
                 # Normalize advantage
                 advantages = rollout_data.advantages
@@ -391,7 +402,7 @@ class AssistedPPO(OnPolicyAlgorithm):
         self,
         env: VecEnv,
         callback: BaseCallback,
-        rollout_buffer: RolloutBuffer,
+        rollout_buffer: AssistedRolloutBuffer,
         n_rollout_steps: int,
     ) -> bool:
         """
@@ -425,6 +436,7 @@ class AssistedPPO(OnPolicyAlgorithm):
         callback.on_rollout_start()
 
         print("collect rollouts")
+        first_step = True
 
         # print(f"type {type(self.env)}")
         if isinstance(self.env, VecEnv):
@@ -437,6 +449,7 @@ class AssistedPPO(OnPolicyAlgorithm):
             ), "Environment isn't wrapped with AssistantWrapper!"
 
         # assert isinstance(self.env, AssistantWrapper)
+        assert isinstance(self.env, VecEnv)
 
         while n_steps < n_rollout_steps:
             if (
@@ -450,28 +463,51 @@ class AssistedPPO(OnPolicyAlgorithm):
             with th.no_grad():
                 # Convert to pytorch tensor or to TensorDict
                 obs_tensor = obs_as_tensor(self._last_obs, self.device)
-                agent_actions, values, log_probs = self.policy(obs_tensor)
-
-            if isinstance(self.env, VecEnv):
-                assistant_actions = self.env.env_method("get_assistant_action")
-                # print("agent_actions", agent_actions)
-                # print("assistant_actions", assistant_actions)
-                assistant_actions = np.stack(assistant_actions, axis=0).astype(
-                    np.float32
+                agent_actions, agent_values, log_probs, assistant_values = self.policy(
+                    obs_tensor
                 )
 
-                # TODO flatten the assistant actions
+            with th.no_grad():
+                # Compare agent and assistant values
+                is_agent_chosen = th.gt(agent_values, assistant_values).cpu()
 
-            # assistant_action = self.env.get_assistant_action(agent_actions=agent_actions)
+            if first_step:
+                print("agent values", agent_values)
+                print("assistant values", assistant_values)
+                print(is_agent_chosen)
+                first_step = False
 
-            agent_actions = agent_actions.cpu().numpy()
+            assistant_actions = self.env.env_method("get_assistant_action")
+            # print("agent_actions", agent_actions)
+            # print("assistant_actions", assistant_actions)
+            assistant_actions = th.from_numpy(
+                np.stack(assistant_actions, axis=0).astype(np.float32)
+            )
+
+            # with th.no_grad():
+            #     pass
+
+            # delete # assistant_action = self.env.get_assistant_action(agent_actions=agent_actions)
+
+            # agent_actions = agent_actions.cpu().numpy()
 
             # print("agent actions dtype", agent_actions.dtype)
             # print("assistant actions dtype", assistant_actions.dtype)
 
             # Apply the mask to the actions
-            actions = self.policy.current_mask.mix_np(
-                assistant_actions=assistant_actions, agent_actions=agent_actions
+            # actions = self.policy.current_mask.mix_np(
+            #     assistant_actions=assistant_actions, agent_actions=agent_actions
+            # )
+            # if assist...
+            # print("first step?", first_step)
+            # print("type agent act", type(agent_actions))
+            # print("type assistant act", type(assistant_actions))
+            # print("type is agent highest val", type(is_agent_chosen))
+
+            actions = (
+                th.where(is_agent_chosen, agent_actions, assistant_actions)
+                .cpu()
+                .numpy()
             )
 
             # Rescale and perform action
@@ -513,13 +549,22 @@ class AssistedPPO(OnPolicyAlgorithm):
                         terminal_value = self.policy.predict_values(terminal_obs)[0]
                     rewards[idx] += self.gamma * terminal_value
 
+            # print("before adding to buffer...")
+            # print("type agent values", type(agent_values))
+            # print("type assistant values", type(assistant_values))
+            # print("type is agent highest val", type(is_agent_chosen))
+
+            # TODO: Only if in exploit mode
+            values = th.where(is_agent_chosen, agent_values, assistant_values)
+
             rollout_buffer.add(
                 self._last_obs,
                 actions,
                 rewards,
                 self._last_episode_starts,
-                values,
+                values,  # TODO
                 log_probs,
+                is_agent_chosen,
             )
             self._last_obs = new_obs
             self._last_episode_starts = dones
