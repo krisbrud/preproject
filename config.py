@@ -5,6 +5,8 @@ import os
 
 from dataclasses import dataclass
 
+from pytablewriter import Bool
+
 from assisted_baselines.common.assistants.pid import PIDGains
 from assisted_baselines.common.mask import BaseMaskSchedule
 from assisted_baselines.common.schedules.checkpoint_schedule import CheckpointSchedule
@@ -191,14 +193,19 @@ def get_config() -> Config:
     parser.add_argument(
         "--config",
         choices=list(available_configs.keys()),
-        default="train-rudder-elevator",
+        default="train-rudder-and-elevator",
         type=str,
     )
     parser.add_argument("--timesteps", default=int(30e6), type=int)
+    parser.add_argument("--no-mlflow", action="store_true")
     args = parser.parse_args()
 
     cfg: Config = available_configs[args.config]()
     cfg.train.total_timesteps = int(args.timesteps)
+
+    if args.no_mlflow:
+        print("Not tracking with MLFlow!")
+        cfg.train.mlflow_tracking_uri = None
 
     print("get config train", dataclasses.asdict(cfg.train))
 
