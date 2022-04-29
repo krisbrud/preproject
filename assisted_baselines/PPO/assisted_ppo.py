@@ -83,6 +83,7 @@ class AssistedPPO(OnPolicyAlgorithm):
         env: Union[GymEnv, str],
         action_mask_schedule: BaseMaskSchedule,
         # assistant: BaseAssistant, #TODO remove
+        assistant_available_probability: float = 0.2,
         learning_rate: Union[float, Schedule] = 3e-4,
         n_steps: int = 2048,
         batch_size: int = 64,
@@ -186,6 +187,7 @@ class AssistedPPO(OnPolicyAlgorithm):
         # self.assistant = assistant
 
         self.assistant_exploit_mode = True
+        self.assistant_available_probability = assistant_available_probability
 
         # Wrap the environment with the Assistantwrapper
         # self.env = AssistantWrapper(self.env, assistant)
@@ -258,6 +260,7 @@ class AssistedPPO(OnPolicyAlgorithm):
                     # Convert discrete action from float to long
                     actions = rollout_data.actions.long().flatten()
 
+                is_agent_chosen = rollout_data.is_agent_chosen[:, 0]
                 # Re-sample the noise matrix because the log_std has changed
                 # if self.use_sde:
                 #     self.policy.reset_noise(self.batch_size)
@@ -285,14 +288,26 @@ class AssistedPPO(OnPolicyAlgorithm):
                 is_agent_chosen = rollout_data.is_agent_chosen.flatten()
 
                 # Normalize advantage
-                advantages = rollout_data.advantages
+                # Only optimize over agent advantages
+                learn_from_assistant_actions = False  # True  # False
+
+                if learn_from_assistant_actions:
+                    advantages = rollout_data.advantages
+                else:
+                    advantages = rollout_data.advantages[is_agent_chosen]
+
                 if self.normalize_advantage:
                     advantages = (advantages - advantages.mean()) / (
                         advantages.std() + 1e-8
                     )
 
                 # ratio between old and new policy, should be one at the first iteration
-                ratio = th.exp(log_prob - rollout_data.old_log_prob)
+                if learn_from_assistant_actions:
+                    ratio = th.exp(log_prob - rollout_data.old_log_prob)
+                else:
+                    ratio = th.exp(log_prob - rollout_data.old_log_prob)[
+                        is_agent_chosen
+                    ]
 
                 if self._first_rollout and first_batch:
                     first_batch = False
@@ -478,6 +493,9 @@ class AssistedPPO(OnPolicyAlgorithm):
         assert isinstance(self.env, VecEnv)
         assert isinstance(self.policy, AssistedActorCriticPolicy)
 
+        rollout_agent_actions = []
+        rollout_assistant_actions = []
+
         while n_steps < n_rollout_steps:
             if (
                 self.use_sde
@@ -502,11 +520,10 @@ class AssistedPPO(OnPolicyAlgorithm):
 
                 # Draw from a bernoulli distribution whether we are allowed to use the assistant
                 # this timestep
-                assistant_available_probability = 0.5
                 is_assistant_available = th.bernoulli(
                     th.full_like(
                         is_agent_better_pred,
-                        fill_value=assistant_available_probability,
+                        fill_value=self.assistant_available_probability,
                         dtype=th.float32,
                     )
                 ).bool()
@@ -531,17 +548,30 @@ class AssistedPPO(OnPolicyAlgorithm):
                     mean=th.zeros_like(assistant_actions),
                     std=(action_noise_std * th.ones_like(assistant_actions)),
                 )
-                noisy_assistant_actions = assistant_actions + assistant_actions_noise
 
                 # TODO Clip the assistant's actions
-                clipped_assistant_actions = noisy_assistant_actions
+                # clipped_assistant_actions = noisy_assistant_actions
                 # Clip the actions to avoid out of bound error
-                if isinstance(self.action_space, gym.spaces.Box):
-                    clipped_assistant_actions = np.clip(
-                        noisy_assistant_actions,
-                        self.action_space.low,
-                        self.action_space.high,
-                    )
+                # if isinstance(self.action_space, gym.spaces.Box):
+                #     clipped_assistant_actions = np.clip(
+                #         noisy_assistant_actions,
+                #         self.action_space.low,
+                #         self.action_space.high,
+                #     )
+                max_assistant_action = th.tensor(
+                    [0.7, 0.7, 0.7]
+                )  # Don't allow the assistant to accelerate much
+                min_assistant_action = -max_assistant_action
+                clipped_assistant_actions = th.clamp(
+                    assistant_actions,
+                    min=min_assistant_action,
+                    max=max_assistant_action,
+                )  #  *= 0.8
+                noisy_assistant_actions = (
+                    clipped_assistant_actions + assistant_actions_noise
+                )
+
+                # TODO Remove: The assistant actions are too extreme - reduce the amplitude
 
                 if first_step:
                     print("agent values", agent_values)
@@ -550,14 +580,20 @@ class AssistedPPO(OnPolicyAlgorithm):
                     print("is agent chosen size", is_agent_chosen.size())
                     print("assistance rate", assistance_rate)
                     print("agent actions", agent_actions)
-                    print("assistant actions", clipped_assistant_actions)
+                    print("assistant actions", noisy_assistant_actions)
                     first_step = False
 
+                rollout_agent_actions.append(agent_actions.numpy())
+                rollout_assistant_actions.append(noisy_assistant_actions.numpy())
+
                 actions = (
-                    th.where(is_agent_chosen, agent_actions, clipped_assistant_actions)
+                    th.where(is_agent_chosen, agent_actions, noisy_assistant_actions)
                     .cpu()
                     .numpy()
                 )
+
+                # # TODO REMOVE - made for debugging how only assistant performs
+                # actions = noisy_assistant_actions.numpy()
             # else:
             #     assistance_rate = 0
             #     is_agent_chosen = th.BoolTensor([[False * self.n_envs]])
@@ -675,6 +711,15 @@ class AssistedPPO(OnPolicyAlgorithm):
 
         assistance_rate_mean = np.mean(assistance_rates)
         self.logger.record("rollout/assistance_rate", assistance_rate_mean)
+
+        print(
+            "rollout agent action mean",
+            np.mean(np.array(rollout_agent_actions), axis=0),
+        )
+        print(
+            "rollout assistant action mean",
+            np.mean(np.array(rollout_assistant_actions), axis=0),
+        )
 
         # TODO: Toggle between exploration and exploitation scheme at random with rate p
         # For now: Toggle between modes explore and exploit

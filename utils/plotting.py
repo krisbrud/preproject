@@ -88,7 +88,7 @@ def plot_control_inputs(sim_dfs, output_dir, tracker=None):
             sim_df["Time"],
             sim_df[[r"$\eta$", r"$\delta_r$", r"$\delta_s$"]],
             linewidth=4,
-            color=c[i],
+            # color=c[i],
         )
 
     plt.xlabel(xlabel="Time [s]", fontsize=14)

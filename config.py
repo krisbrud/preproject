@@ -68,7 +68,10 @@ class TrainConfig:
 @dataclass
 class AuvPidConfig:
     # Gains for PID controllers for assistant
-    surge = PIDGains(Kp=2, Ki=1.5, Kd=0)
+    # surge = PIDGains(Kp=2, Ki=1.5, Kd=0)
+    # rudder = PIDGains(Kp=3.5, Ki=0.05, Kd=0.03)
+    # elevator = PIDGains(Kp=3.5, Ki=0.05, Kd=0.03)
+    surge = PIDGains(Kp=1, Ki=0.5, Kd=0)
     rudder = PIDGains(Kp=3.5, Ki=0.05, Kd=0.03)
     elevator = PIDGains(Kp=3.5, Ki=0.05, Kd=0.03)
 
@@ -78,6 +81,7 @@ class AssistanceConfig:
     mask_schedule: BaseMaskSchedule
     # Define parameters for PID controllers
     auv_pid: AuvPidConfig = AuvPidConfig()
+    assistant_available_probability = 0.2
 
 
 @dataclass
@@ -178,6 +182,25 @@ def train_elevator_config():
     return cfg
 
 
+def train_all_1m_config():
+    # Train all actuators for 1 million timesteps
+    cfg = _get_default_config()
+    cfg.experiment.name = "train-all-1m"
+    cfg.train.total_timesteps = int(1e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
 def debug_config() -> Config:
     # Train only elevator according to Simentha's paper draft
     cfg = _get_default_config()
@@ -208,6 +231,7 @@ def get_config() -> Config:
         "train-elevator": train_elevator_config,
         "train-rudder-and-elevator": train_rudder_and_elevator_config,
         "train-rudder-then-elevator": train_rudder_then_elevator_config,
+        "train-all-1m": train_all_1m_config,
         "debug": debug_config,
     }
     parser = argparse.ArgumentParser()
@@ -218,6 +242,7 @@ def get_config() -> Config:
         type=str,
     )
     parser.add_argument("--timesteps", type=int)
+    parser.add_argument("--num-envs", type=int)
     parser.add_argument("--no-mlflow", action="store_true")
     args = parser.parse_args()
 
@@ -229,6 +254,9 @@ def get_config() -> Config:
     if args.no_mlflow:
         print("Not tracking with MLFlow!")
         cfg.train.mlflow_tracking_uri = None
+
+    if args.num_envs is not None:
+        cfg.train.num_envs = int(args.num_envs)
 
     print("get config train", dataclasses.asdict(cfg.train))
 

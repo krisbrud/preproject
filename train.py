@@ -117,7 +117,13 @@ def train():
 
     env = get_assisted_envs(cfg)
     mask_schedule = cfg.assistance.mask_schedule
-    agent = AssistedPPO("AssistedPolicy", env, mask_schedule, **hyperparams)
+    agent = AssistedPPO(
+        "AssistedPolicy",
+        env,
+        mask_schedule,
+        assistant_available_probability=cfg.assistance.assistant_available_probability,
+        **hyperparams,
+    )
     # print(f"env action space {env.action_space}")
 
     # env, agent = baseline_env_agent(cfg)
