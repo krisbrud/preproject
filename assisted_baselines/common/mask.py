@@ -75,6 +75,10 @@ class ActiveActionsMask:
         return actions
 
     def select(self, tensor: torch.Tensor):
+        """
+        TODO Documentation
+        Returns the parts of the samples where the mask is True
+        """
         if len(tensor.shape) > 1:
             return tensor[:, self.mask]
         else:

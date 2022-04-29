@@ -66,15 +66,11 @@ class PIDAssistant(BaseAssistant):
     def __init__(self,
                  n_actions: int,
                  pid_controllers: List[PIDController],
-                 pid_error_indices: List[int],
-                 use_noise=False,
-                 noise_std = 0.1):
+                 pid_error_indices: List[int]):
         super(PIDAssistant, self).__init__(n_actions=n_actions)
         
         self.pid_controllers = pid_controllers
         self.pid_error_indices = pid_error_indices
-        self.use_noise = use_noise
-        self.noise_std = noise_std
 
 
     # TODO: Make observation preprocessing
@@ -95,12 +91,6 @@ class PIDAssistant(BaseAssistant):
         
         for i, (obs, pid) in enumerate(zip(preprocessed_obs, self.pid_controllers)):
             assistant_actions[i] = pid.u(obs)
-            
-        if self.use_noise:
-            pass
-            # assistant_actions += np.randn_like(assistant_actions) * self.noise_std
-        
-        # print("pid actions: ", assistant_actions)
 
         return assistant_actions
             
