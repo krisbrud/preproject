@@ -38,7 +38,7 @@ class HyperparamConfig:
     # Also see https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#parameters
     # for more details
     n_steps: int = 1024
-    learning_rate: float = 5e-5
+    learning_rate: float = 5e-4  # 5e-5
     batch_size: int = 1024
     gae_lambda: float = 0.95
     gamma: float = 0.999  # Discount factor
@@ -201,6 +201,25 @@ def train_all_1m_config():
     return cfg
 
 
+def train_all_5m_config():
+    # Train all actuators for 1 million timesteps
+    cfg = _get_default_config()
+    cfg.experiment.name = "train-all-5m"
+    cfg.train.total_timesteps = int(5e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
 def debug_config() -> Config:
     # Train only elevator according to Simentha's paper draft
     cfg = _get_default_config()
@@ -232,6 +251,7 @@ def get_config() -> Config:
         "train-rudder-and-elevator": train_rudder_and_elevator_config,
         "train-rudder-then-elevator": train_rudder_then_elevator_config,
         "train-all-1m": train_all_1m_config,
+        "train-all-5m": train_all_5m_config,
         "debug": debug_config,
     }
     parser = argparse.ArgumentParser()
