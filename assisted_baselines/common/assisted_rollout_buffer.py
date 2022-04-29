@@ -1,7 +1,7 @@
 # A rollout buffer that also keeps track of if agent or assistant actions where taken,
 # as well as the auxillary assistant value prediction
 
-from typing import Generator, NamedTuple, Optional
+from typing import Generator, NamedTuple, Optional, Union
 import numpy as np
 import torch as th
 from gym import spaces
@@ -18,7 +18,7 @@ class AssistedRolloutBufferSamples(NamedTuple):
     old_log_prob: th.Tensor
     advantages: th.Tensor
     returns: th.Tensor
-    is_action_chosen: th.Tensor
+    is_agent_chosen: th.Tensor
 
 
 # Inherit from RolloutBuffer, but add support for saving which action was taken
@@ -92,8 +92,12 @@ class AssistedRolloutBuffer(RolloutBuffer):
         :param log_prob: log probability of the action
             following the current policy.
         """
-        self.is_agent_chosen[self.pos] = is_agent_chosen.clone().cpu().numpy()
-        print("self.is agent chosen", self.is_agent_chosen)
+        # print("rolloutbuffer add")
+        # print("action shape", action.shape)
+        # print("is_agent_chosen shape", is_agent_chosen.shape)
+
+        self.is_agent_chosen[self.pos] = np.array(is_agent_chosen).copy()
+        # print("self.is agent chosen", self.is_agent_chosen)
 
         super(AssistedRolloutBuffer, self).add(
             obs, action, reward, episode_start, value, log_prob
@@ -114,7 +118,7 @@ class AssistedRolloutBuffer(RolloutBuffer):
                 "log_probs",
                 "advantages",
                 "returns",
-                "is_action_chosen",
+                "is_agent_chosen",
             ]
 
             for tensor in _tensor_names:

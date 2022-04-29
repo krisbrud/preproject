@@ -364,7 +364,7 @@ class AssistedActorCriticPolicy(BasePolicy):
 
     def evaluate_actions(
         self, obs: th.Tensor, actions: th.Tensor, mask=None
-    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+    ) -> Tuple[th.Tensor, th.Tensor, th.Tensor, th.Tensor]:
         """
         Evaluate actions according to the current policy,
         given the observations.
@@ -379,7 +379,9 @@ class AssistedActorCriticPolicy(BasePolicy):
         distribution = self._get_action_dist_from_latent(latent_pi)
         log_prob = distribution.log_prob(actions)
         values = self.value_net(latent_vf)
-        return values, log_prob, distribution.entropy()
+        assistant_values = self.assistant_value_net(latent_vf)
+
+        return values, log_prob, distribution.entropy(), assistant_values
 
     def evaluate_masked_actions(
         self, obs: th.Tensor, actions: th.Tensor

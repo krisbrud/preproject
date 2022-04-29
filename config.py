@@ -178,6 +178,26 @@ def train_elevator_config():
     return cfg
 
 
+def debug_config() -> Config:
+    # Train only elevator according to Simentha's paper draft
+    cfg = _get_default_config()
+    cfg.experiment.name = "debug-config"
+    cfg.train.total_timesteps = int(1e3)
+    cfg.train.num_envs = (
+        4  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.mlflow_tracking_uri = None
+    cfg.train.n_eval_episodes = (
+        1  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
 def get_config() -> Config:
     """
     Parse the command line argument, pick the chosen config
@@ -188,6 +208,7 @@ def get_config() -> Config:
         "train-elevator": train_elevator_config,
         "train-rudder-and-elevator": train_rudder_and_elevator_config,
         "train-rudder-then-elevator": train_rudder_then_elevator_config,
+        "debug": debug_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -196,12 +217,14 @@ def get_config() -> Config:
         default="train-rudder-and-elevator",
         type=str,
     )
-    parser.add_argument("--timesteps", default=int(30e6), type=int)
+    parser.add_argument("--timesteps", type=int)
     parser.add_argument("--no-mlflow", action="store_true")
     args = parser.parse_args()
 
     cfg: Config = available_configs[args.config]()
-    cfg.train.total_timesteps = int(args.timesteps)
+    if args.timesteps is not None:
+        # Overwrite number of timesteps only if given as argument
+        cfg.train.total_timesteps = int(args.timesteps)
 
     if args.no_mlflow:
         print("Not tracking with MLFlow!")
