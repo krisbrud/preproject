@@ -494,61 +494,74 @@ class AssistedPPO(OnPolicyAlgorithm):
                     obs_tensor
                 )
 
-            if self.assistant_exploit_mode:
-                with th.no_grad():
-                    # Compare agent and assistant values
-                    # We slice the tensor to avoid an unnecessary dimension at the end. TODO
-                    is_agent_chosen = th.gt(agent_values, assistant_values).cpu()
-                    assistance_rate = 1.0 - is_agent_chosen.float().mean().item()
+            # if self.assistant_exploit_mode:
+            with th.no_grad():
+                # Compare agent and assistant values
+                # We slice the tensor to avoid an unnecessary dimension at the end. TODO
+                is_agent_better_pred = th.gt(agent_values, assistant_values).cpu()
 
-                    assistant_actions = self.env.env_method("get_assistant_action")
-                    # print("agent_actions", agent_actions)
-                    # print("assistant_actions", assistant_actions)
-                    assistant_actions = th.from_numpy(
-                        np.stack(assistant_actions, axis=0).astype(np.float32)
+                # Draw from a bernoulli distribution whether we are allowed to use the assistant
+                # this timestep
+                assistant_available_probability = 0.5
+                is_assistant_available = th.bernoulli(
+                    th.full_like(
+                        is_agent_better_pred,
+                        fill_value=assistant_available_probability,
+                        dtype=th.float32,
+                    )
+                ).bool()
+                # print("is assistant avail", is_assistant_available)
+
+                # Choose agent in env if
+                # it is predicted to be better OR the assistant is NOT available
+                is_agent_chosen = is_agent_better_pred | (~is_assistant_available)
+
+                # Calculate assistance rate
+                assistance_rate = 1.0 - is_agent_chosen.float().mean().item()
+
+                assistant_actions = self.env.env_method("get_assistant_action")
+                # print("agent_actions", agent_actions)
+                # print("assistant_actions", assistant_actions)
+                assistant_actions = th.from_numpy(
+                    np.stack(assistant_actions, axis=0).astype(np.float32)
+                )
+
+                action_noise_std = 0.1
+                assistant_actions_noise = th.normal(
+                    mean=th.zeros_like(assistant_actions),
+                    std=(action_noise_std * th.ones_like(assistant_actions)),
+                )
+                noisy_assistant_actions = assistant_actions + assistant_actions_noise
+
+                # TODO Clip the assistant's actions
+                clipped_assistant_actions = noisy_assistant_actions
+                # Clip the actions to avoid out of bound error
+                if isinstance(self.action_space, gym.spaces.Box):
+                    clipped_assistant_actions = np.clip(
+                        noisy_assistant_actions,
+                        self.action_space.low,
+                        self.action_space.high,
                     )
 
-                    # TODO Add noise to actions
-                    action_noise_std = 0.1
-                    assistant_actions_noise = th.normal(
-                        mean=th.zeros_like(assistant_actions),
-                        std=(action_noise_std * th.ones_like(assistant_actions)),
-                    )
-                    noisy_assistant_actions = (
-                        assistant_actions + assistant_actions_noise
-                    )
+                if first_step:
+                    print("agent values", agent_values)
+                    print("assistant values", assistant_values)
+                    print("is agent chosen", is_agent_chosen)
+                    print("is agent chosen size", is_agent_chosen.size())
+                    print("assistance rate", assistance_rate)
+                    print("agent actions", agent_actions)
+                    print("assistant actions", clipped_assistant_actions)
+                    first_step = False
 
-                    # TODO Clip the assistant's actions
-                    clipped_assistant_actions = noisy_assistant_actions
-                    # Clip the actions to avoid out of bound error
-                    if isinstance(self.action_space, gym.spaces.Box):
-                        clipped_assistant_actions = np.clip(
-                            noisy_assistant_actions,
-                            self.action_space.low,
-                            self.action_space.high,
-                        )
-
-                    if first_step:
-                        print("agent values", agent_values)
-                        print("assistant values", assistant_values)
-                        print("is agent chosen", is_agent_chosen)
-                        print("is agent chosen size", is_agent_chosen.size())
-                        print("assistance rate", assistance_rate)
-                        print("agent actions", agent_actions)
-                        print("assistant actions", clipped_assistant_actions)
-                        first_step = False
-
-                    actions = (
-                        th.where(
-                            is_agent_chosen, agent_actions, clipped_assistant_actions
-                        )
-                        .cpu()
-                        .numpy()
-                    )
-            else:
-                assistance_rate = 0
-                is_agent_chosen = th.BoolTensor([[False * self.n_envs]])
-                actions = agent_actions.cpu().numpy()
+                actions = (
+                    th.where(is_agent_chosen, agent_actions, clipped_assistant_actions)
+                    .cpu()
+                    .numpy()
+                )
+            # else:
+            #     assistance_rate = 0
+            #     is_agent_chosen = th.BoolTensor([[False * self.n_envs]])
+            #     actions = agent_actions.cpu().numpy()
 
             # if assistance_only:
             #     is_agent_chosen = th.BoolTensor([[True * self.n_envs]])
