@@ -171,6 +171,7 @@ class PathFollowAuv3D(gym.Env):
         #     )
 
         action = np.clip(action, np.array([0, -1, -1]), np.array([1, 1, 1]))
+
         if len(self.past_actions) > 0:
             self.action_derivative = (action[1:] - self.past_actions[-1][1:]) / (
                 self.step_size
@@ -275,6 +276,17 @@ class PathFollowAuv3D(gym.Env):
         end_cond_4 = abs(self.prog - self.path.length) <= self.accept_rad / 2.0
 
         if end_cond_1 or end_cond_2 or end_cond_3 or end_cond_4:
+            if self.reward < -510.0:
+                print(
+                    f"Got an unexpected reward {self.reward}! Printing info for debug"
+                )
+                print("Roll reward", reward_roll)
+                print("Control reward", reward_control)
+                print("Path following reward", reward_path_following)
+                print("Step reward", step_reward)
+                print("obs", obs)
+                print("action", action)
+
             if end_cond_2:
                 print("Max timesteps reached!")
 
