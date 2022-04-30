@@ -117,7 +117,7 @@ def train():
 
     env = get_assisted_envs(cfg)
     mask_schedule = cfg.assistance.mask_schedule
-    agent = AssistedPPO("AssistedPolicy", env, mask_schedule, **hyperparams)
+
     # print(f"env action space {env.action_space}")
 
     # env, agent = baseline_env_agent(cfg)
@@ -166,6 +166,17 @@ def train():
         # tracker.log_param("environment_config", pprint.pformat(gym_auv.pid_auv3d_config))
     else:
         tracker = None
+
+    agent = AssistedPPO(
+        "AssistedPolicy",
+        env,
+        mask_schedule,
+        tracker=tracker,
+        assistant_available_probability=cfg.assistance.assistant_available_probability,
+        learn_from_assistant_actions=cfg.train.learn_from_assistant_actions,
+        assistant_action_noise_std=cfg.assistance.assistant_action_noise_std,
+        **hyperparams,
+    )
 
     save_and_track_callback = SaveAndTrackCallback(
         cfg.system.output_path, tracker=tracker, save_freq=save_freq

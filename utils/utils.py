@@ -64,17 +64,28 @@ def simulate_environment(env, agent):
         r"$\tilde{\upsilon}$",
         r"h",
     ]
+    raw_action_labels = ["surge_raw", "rudder_raw", "elevator_raw"]
+
     labels = np.hstack(
-        ["Time", state_labels, input_labels, error_labels, current_labels]
+        [
+            "Time",
+            state_labels,
+            input_labels,
+            error_labels,
+            current_labels,
+            raw_action_labels,
+        ]
     )
 
     done = False
     obs = env.reset()
 
     # env.
+    raw_actions = []
 
     while not done:
         action = np.array(agent.predict(obs, deterministic=True)[0])
+        raw_actions.append(action)
         # print("simulate environment action", action)
         # assistant_action = env.get_assistant_action()
         obs, _, done, _ = env.step(action)
@@ -82,6 +93,7 @@ def simulate_environment(env, agent):
     errors = np.array(env.past_errors)
     # print("errors", errors)
     time = np.array(env.time).reshape(-1, 1)
+    raw_actions = np.array(raw_actions)
     # print("time,", time)
     # print('env.past_states,', env.past_states 0))x
     # print('env.past_actions,', env.past_actions)
@@ -94,6 +106,7 @@ def simulate_environment(env, agent):
             env.past_actions,
             errors,
             env.current_history,
+            raw_actions,
         ]
     )
     df = DataFrame(sim_data, columns=labels)

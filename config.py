@@ -38,7 +38,7 @@ class HyperparamConfig:
     # Also see https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#parameters
     # for more details
     n_steps: int = 1024
-    learning_rate: float = 5e-5
+    learning_rate: float = 5e-4  # 5e-5
     batch_size: int = 1024
     gae_lambda: float = 0.95
     gamma: float = 0.999  # Discount factor
@@ -63,12 +63,17 @@ class TrainConfig:
     algorithm: str = "AssistedPPO"
     # How many evaluation episodes to run when evaluating the environment
     n_eval_episodes: int = 100
+    # Whether actions taken by the assistant should be used when optimizing the policy during training
+    learn_from_assistant_actions: bool = False
 
 
 @dataclass
 class AuvPidConfig:
     # Gains for PID controllers for assistant
-    surge = PIDGains(Kp=2, Ki=1.5, Kd=0)
+    # surge = PIDGains(Kp=2, Ki=1.5, Kd=0)
+    # rudder = PIDGains(Kp=3.5, Ki=0.05, Kd=0.03)
+    # elevator = PIDGains(Kp=3.5, Ki=0.05, Kd=0.03)
+    surge = PIDGains(Kp=1, Ki=0.5, Kd=0)
     rudder = PIDGains(Kp=3.5, Ki=0.05, Kd=0.03)
     elevator = PIDGains(Kp=3.5, Ki=0.05, Kd=0.03)
 
@@ -78,6 +83,8 @@ class AssistanceConfig:
     mask_schedule: BaseMaskSchedule
     # Define parameters for PID controllers
     auv_pid: AuvPidConfig = AuvPidConfig()
+    assistant_available_probability = 0.2
+    assistant_action_noise_std = 0.1
 
 
 @dataclass
@@ -178,15 +185,93 @@ def train_elevator_config():
     return cfg
 
 
+def train_all_1m_config():
+    # Train all actuators for 1 million timesteps
+    cfg = _get_default_config()
+    cfg.experiment.name = "train-all-1m"
+    cfg.train.total_timesteps = int(1e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def learn_from_assistant_config():
+    # Train all actuators for 1 million timesteps
+    cfg = _get_default_config()
+    cfg.experiment.name = "learn-from-assistant"
+    cfg.train.total_timesteps = int(1e6)
+    cfg.train.num_envs = (
+        4  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.train.learn_from_assistant_actions = True
+
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def train_all_5m_config():
+    # Train all actuators for 1 million timesteps
+    cfg = _get_default_config()
+    cfg.experiment.name = "train-all-5m"
+    cfg.train.total_timesteps = int(5e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
 def debug_config() -> Config:
     # Train only elevator according to Simentha's paper draft
     cfg = _get_default_config()
     cfg.experiment.name = "debug-config"
-    cfg.train.total_timesteps = int(1e3)
+    cfg.train.total_timesteps = int(10e3)
     cfg.train.num_envs = (
         4  # More than one, so we use multiprocessing, but still easy to find
     )
     cfg.train.mlflow_tracking_uri = None
+    cfg.train.n_eval_episodes = (
+        1  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def debug_with_mlflow_config() -> Config:
+    # Train only elevator according to Simentha's paper draft
+    cfg = _get_default_config()
+    cfg.experiment.name = "debug-with-mlflow"
+    cfg.train.total_timesteps = int(1e3)
+    cfg.train.num_envs = (
+        4  # More than one, so we use multiprocessing, but still easy to find
+    )
     cfg.train.n_eval_episodes = (
         1  # Just check that it doesn't crash, we don't care about it being many
     )
@@ -208,7 +293,11 @@ def get_config() -> Config:
         "train-elevator": train_elevator_config,
         "train-rudder-and-elevator": train_rudder_and_elevator_config,
         "train-rudder-then-elevator": train_rudder_then_elevator_config,
+        "train-all-1m": train_all_1m_config,
+        "train-all-5m": train_all_5m_config,
         "debug": debug_config,
+        "debug-with-mlflow": debug_with_mlflow_config,
+        "learn-from-assistant": learn_from_assistant_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -218,6 +307,7 @@ def get_config() -> Config:
         type=str,
     )
     parser.add_argument("--timesteps", type=int)
+    parser.add_argument("--num-envs", type=int)
     parser.add_argument("--no-mlflow", action="store_true")
     args = parser.parse_args()
 
@@ -229,6 +319,9 @@ def get_config() -> Config:
     if args.no_mlflow:
         print("Not tracking with MLFlow!")
         cfg.train.mlflow_tracking_uri = None
+
+    if args.num_envs is not None:
+        cfg.train.num_envs = int(args.num_envs)
 
     print("get config train", dataclasses.asdict(cfg.train))
 
