@@ -117,53 +117,6 @@ class MLFlowTracker(AbstractTracker):
         mlflow.end_run()
 
 
-from stable_baselines3.common.monitor import Monitor, ResultsWriter
-
-
-class MLFlowMonitor(Monitor):
-    def __init__(
-        self,
-        env: gym.Env,
-        mlflow_tracker: MLFlowTracker,
-        filename: Optional[str] = None,
-        allow_early_resets: bool = True,
-        reset_keywords: Tuple[str, ...] = ...,
-        info_keywords: Tuple[str, ...] = ...,
-    ):
-        super().__init__(
-            env, filename, allow_early_resets, reset_keywords, info_keywords
-        )
-        self.mlflow_tracker = mlflow_tracker
-        self.results_writer = MLFlowResultsWriter(
-            mlflow_tracker=self.mlflow_tracker,
-            header={"t_start": self.t_start, "env_id": env.spec and env.spec.id},
-            extra_keys=reset_keywords + info_keywords,
-        )
-
-
-class MLFlowResultsWriter(ResultsWriter):
-    def __init__(
-        self,
-        mlflow_tracker: MLFlowTracker,
-        filename: str = "",
-        header: Optional[Dict[str, Union[float, str]]] = None,
-        extra_keys: Tuple[str, ...] = ...,
-    ):
-        super().__init__(filename, header, extra_keys)
-
-        self.mlflow_tracker = mlflow_tracker
-
-    def write_row(self, epinfo: Dict[str, Union[float, int]]) -> None:
-        # Write rows as metrics to MLFlow tracking as well
-        # Note that we need to make sure that we have the total number of timesteps so far,
-        # so that so that the metric is plotted at the correct time
-        # if
-        print("epinfo", epinfo)
-        # self.mlflow_tracker.log_metrics()
-
-        return super().write_row(epinfo)
-
-
 class MLFlowOutputFormat(KVWriter):
     def __init__(self, mlflow_tracker: MLFlowTracker) -> None:
         super().__init__()
