@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union
 import gym
 
 import numpy as np
@@ -25,6 +25,8 @@ from assisted_baselines.common.assistant import AssistantWrapper, BaseAssistant
 from assisted_baselines.common.assisted_actor_critic import AssistedActorCriticPolicy
 from assisted_baselines.common.assisted_rollout_buffer import AssistedRolloutBuffer
 from assisted_baselines.common.mask import BaseMaskSchedule
+from utils.trackers.abstract_tracker import AbstractTracker
+from utils.trackers.mlflow_tracker import MLFlowOutputFormat, MLFlowTracker
 
 
 class AssistedPPO(OnPolicyAlgorithm):
@@ -83,7 +85,9 @@ class AssistedPPO(OnPolicyAlgorithm):
         env: Union[GymEnv, str],
         action_mask_schedule: BaseMaskSchedule,
         # assistant: BaseAssistant, #TODO remove
+        tracker: AbstractTracker = None,
         assistant_available_probability: float = 0.2,
+        learn_from_assistant_actions: bool = False,
         learning_rate: Union[float, Schedule] = 3e-4,
         n_steps: int = 2048,
         batch_size: int = 64,
@@ -149,6 +153,8 @@ class AssistedPPO(OnPolicyAlgorithm):
             ),
         )
 
+        self.tracker = tracker
+
         self._first_rollout = True
 
         # Sanity check, otherwise it will lead to noisy gradient and NaN
@@ -188,6 +194,7 @@ class AssistedPPO(OnPolicyAlgorithm):
 
         self.assistant_exploit_mode = True
         self.assistant_available_probability = assistant_available_probability
+        self.learn_from_assistant_actions = learn_from_assistant_actions
 
         # Wrap the environment with the Assistantwrapper
         # self.env = AssistantWrapper(self.env, assistant)
@@ -220,6 +227,37 @@ class AssistedPPO(OnPolicyAlgorithm):
                 )
 
             self.clip_range_vf = get_schedule_fn(self.clip_range_vf)
+
+    def _setup_learn(
+        self,
+        total_timesteps: int,
+        eval_env: Optional[GymEnv],
+        callback: MaybeCallback = None,
+        eval_freq: int = 10000,
+        n_eval_episodes: int = 5,
+        log_path: Optional[str] = None,
+        reset_num_timesteps: bool = True,
+        tb_log_name: str = "run",
+    ) -> Tuple[int, BaseCallback]:
+        return_vals = super()._setup_learn(
+            total_timesteps,
+            eval_env,
+            callback,
+            eval_freq,
+            n_eval_episodes,
+            log_path,
+            reset_num_timesteps,
+            tb_log_name,
+        )
+
+        # Add MLFlow-tracker output format to logger, such that metrics we log
+        if self.tracker is not None and isinstance(self.tracker, MLFlowTracker):
+            # Make the logger log metrics from the training monitor to MLFlow as well
+            self.logger.output_formats.append(
+                MLFlowOutputFormat(mlflow_tracker=self.tracker)
+            )
+
+        return return_vals
 
     def train(self) -> None:
         """
@@ -289,9 +327,9 @@ class AssistedPPO(OnPolicyAlgorithm):
 
                 # Normalize advantage
                 # Only optimize over agent advantages
-                learn_from_assistant_actions = False  # True  # False
+                # learn_from_assistant_actions = False  # True  # False
 
-                if learn_from_assistant_actions:
+                if self.learn_from_assistant_actions:
                     advantages = rollout_data.advantages
                 else:
                     advantages = rollout_data.advantages[is_agent_chosen]
@@ -302,7 +340,7 @@ class AssistedPPO(OnPolicyAlgorithm):
                     )
 
                 # ratio between old and new policy, should be one at the first iteration
-                if learn_from_assistant_actions:
+                if self.learn_from_assistant_actions:
                     ratio = th.exp(log_prob - rollout_data.old_log_prob)
                 else:
                     ratio = th.exp(log_prob - rollout_data.old_log_prob)[

@@ -1,3 +1,4 @@
+from typing import Union
 import gym
 from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
@@ -10,6 +11,7 @@ from assisted_baselines.common.assistants.pid import (
     PIDController,
     PIDGains,
 )
+from utils.trackers.mlflow_tracker import MLFlowMonitor
 
 
 def make_pid_controller(gains: PIDGains, timestep: float):
@@ -50,6 +52,8 @@ def get_eval_env(cfg: Config):
 
 
 def get_assisted_envs(cfg: Config):
+    monitor_cls: Union[Monitor, MLFlowMonitor]
+
     if cfg.train.num_envs > 1:
         env = SubprocVecEnv(
             [

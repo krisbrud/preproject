@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import os
 
 from stable_baselines3.common.callbacks import BaseCallback, EventCallback
+from stable_baselines3.common.monitor import Monitor
 
 
 class AbstractTracker(ABC):
@@ -21,6 +22,7 @@ class SaveAndTrackCallback(BaseCallback):
 
     :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
     """
+
     def __init__(self, save_dir, tracker=None, save_freq=100000, verbose=0):
         super(SaveAndTrackCallback, self).__init__(verbose)
         # Those variables will be accessible in the callback
@@ -68,10 +70,11 @@ class SaveAndTrackCallback(BaseCallback):
         :return: (bool) If the callback returns False, training is aborted early.
         """
         if self.n_calls % self.save_freq == 0:
-            
+
             # Save the model to disk
             path = os.path.join(
-                self.save_dir, "model_" + str(self.num_timesteps) + ".pkl")
+                self.save_dir, "model_" + str(self.num_timesteps) + ".pkl"
+            )
             self.model.save(path)
 
             # Register model with tracker
@@ -84,7 +87,11 @@ class SaveAndTrackCallback(BaseCallback):
         """
         This event is triggered before updating the policy.
         """
-        pass
+        # Log some metrics to MLFlow if monitor-wrapped
+        if isinstance(self.training_env, Monitor):
+            pass
+
+        # pass
 
     def _on_training_end(self) -> None:
         """
@@ -107,6 +114,7 @@ class SaveCallback(BaseCallback):
 
     :param verbose: (int) Verbosity level 0: not output 1: info 2: debug
     """
+
     def __init__(self, agents_dir, verbose=0):
         super(SaveCallback, self).__init__(verbose)
         # Those variables will be accessible in the callback
@@ -150,8 +158,10 @@ class SaveCallback(BaseCallback):
         if self.n_rollouts % self.rollout_save_freq == 0:
             # Save agent every rollout_save_freq rollouts
             self.model.save(
-                os.path.join(self.agents_dir,
-                             "model_" + str(self.num_timesteps) + ".pkl"))
+                os.path.join(
+                    self.agents_dir, "model_" + str(self.num_timesteps) + ".pkl"
+                )
+            )
         self.rollout_save_freq += 1
 
         return True

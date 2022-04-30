@@ -1,6 +1,9 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Tuple, Union
+import gym
 import mlflow
+import numpy as np
 from pytablewriter import Bool
+from stable_baselines3.common.logger import KVWriter
 
 from utils.trackers.abstract_tracker import AbstractTracker
 
@@ -83,13 +86,26 @@ class MLFlowTracker(AbstractTracker):
 
         return True
 
-    def log_metric(self, metric_name, value):
+    def log_metric(self, metric_name, value, step=None):
         try:
-            mlflow.log_metric(metric_name, value)
+            mlflow.log_metric(metric_name, value, step=None)
         except Exception as e:
             # Failed to log metric
             print(
-                f"Couldn't log params (metric_name, value) ({metric_name}, {value}) to MLFlow!"
+                f"Couldn't log metric (metric_name, value) ({metric_name}, {value}) to MLFlow!"
+            )
+            print(f"Exception: {e}")
+            return False
+
+        return True
+
+    def log_metrics(self, metrics, step):
+        try:
+            mlflow.log_metrics(metrics, step)
+        except Exception as e:
+            # Failed to log metric. Don't crash the program.
+            print(
+                f"Couldn't log metrics (metric_name, value) ({metrics}) at timestep {step} to MLFlow!"
             )
             print(f"Exception: {e}")
             return False
@@ -99,3 +115,94 @@ class MLFlowTracker(AbstractTracker):
     def __del__(self):
         # Destructor. End the current run.
         mlflow.end_run()
+
+
+from stable_baselines3.common.monitor import Monitor, ResultsWriter
+
+
+class MLFlowMonitor(Monitor):
+    def __init__(
+        self,
+        env: gym.Env,
+        mlflow_tracker: MLFlowTracker,
+        filename: Optional[str] = None,
+        allow_early_resets: bool = True,
+        reset_keywords: Tuple[str, ...] = ...,
+        info_keywords: Tuple[str, ...] = ...,
+    ):
+        super().__init__(
+            env, filename, allow_early_resets, reset_keywords, info_keywords
+        )
+        self.mlflow_tracker = mlflow_tracker
+        self.results_writer = MLFlowResultsWriter(
+            mlflow_tracker=self.mlflow_tracker,
+            header={"t_start": self.t_start, "env_id": env.spec and env.spec.id},
+            extra_keys=reset_keywords + info_keywords,
+        )
+
+
+class MLFlowResultsWriter(ResultsWriter):
+    def __init__(
+        self,
+        mlflow_tracker: MLFlowTracker,
+        filename: str = "",
+        header: Optional[Dict[str, Union[float, str]]] = None,
+        extra_keys: Tuple[str, ...] = ...,
+    ):
+        super().__init__(filename, header, extra_keys)
+
+        self.mlflow_tracker = mlflow_tracker
+
+    def write_row(self, epinfo: Dict[str, Union[float, int]]) -> None:
+        # Write rows as metrics to MLFlow tracking as well
+        # Note that we need to make sure that we have the total number of timesteps so far,
+        # so that so that the metric is plotted at the correct time
+        # if
+        print("epinfo", epinfo)
+        # self.mlflow_tracker.log_metrics()
+
+        return super().write_row(epinfo)
+
+
+class MLFlowOutputFormat(KVWriter):
+    def __init__(self, mlflow_tracker: MLFlowTracker) -> None:
+        super().__init__()
+        self.mlflow_tracker = mlflow_tracker
+
+    def write(
+        self,
+        key_values: Dict[str, Any],
+        key_excluded: Dict[str, Union[str, Tuple[str, ...]]],
+        step: int = 0,
+    ) -> None:
+        """
+        Write a dictionary to MLFlow
+
+        :param key_values:
+        :param key_excluded:
+        :param step:
+        """
+        metrics_to_log = dict()
+
+        # Only log numerical metrics
+        for (key, value), (_, excluded) in zip(
+            sorted(key_values.items()), sorted(key_excluded.items())
+        ):
+            # Based on the implementation for the TensorboardOutputFormat, as the use case
+            # is similar, e.g. we do not want to log total_timesteps every rollout etc
+            if excluded is not None and "tensorboard" in excluded:
+                continue
+
+            if isinstance(value, np.ScalarType):
+                if isinstance(value, str):
+                    # str is considered a np.ScalarType
+                    pass  # Logging strings as metric is not allowed
+                else:
+                    metrics_to_log[key] = value
+
+        # Log all metrics to MLFlow
+        self.mlflow_tracker.log_metrics(metrics_to_log, step)
+
+    def close(self):
+        # Do nothing
+        pass

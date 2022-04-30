@@ -63,6 +63,8 @@ class TrainConfig:
     algorithm: str = "AssistedPPO"
     # How many evaluation episodes to run when evaluating the environment
     n_eval_episodes: int = 100
+    # Whether actions taken by the assistant should be used when optimizing the policy during training
+    learn_from_assistant_actions: bool = False
 
 
 @dataclass
@@ -224,11 +226,30 @@ def debug_config() -> Config:
     # Train only elevator according to Simentha's paper draft
     cfg = _get_default_config()
     cfg.experiment.name = "debug-config"
-    cfg.train.total_timesteps = int(1e3)
+    cfg.train.total_timesteps = int(10e3)
     cfg.train.num_envs = (
         4  # More than one, so we use multiprocessing, but still easy to find
     )
     cfg.train.mlflow_tracking_uri = None
+    cfg.train.n_eval_episodes = (
+        1  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def debug_with_mlflow_config() -> Config:
+    # Train only elevator according to Simentha's paper draft
+    cfg = _get_default_config()
+    cfg.experiment.name = "debug-with-mlflow"
+    cfg.train.total_timesteps = int(1e3)
+    cfg.train.num_envs = (
+        4  # More than one, so we use multiprocessing, but still easy to find
+    )
     cfg.train.n_eval_episodes = (
         1  # Just check that it doesn't crash, we don't care about it being many
     )
@@ -253,6 +274,7 @@ def get_config() -> Config:
         "train-all-1m": train_all_1m_config,
         "train-all-5m": train_all_5m_config,
         "debug": debug_config,
+        "debug-with-mlflow": debug_with_mlflow_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
