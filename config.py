@@ -84,6 +84,7 @@ class AssistanceConfig:
     # Define parameters for PID controllers
     auv_pid: AuvPidConfig = AuvPidConfig()
     assistant_available_probability = 0.2
+    assistant_action_noise_std = 0.1
 
 
 @dataclass
@@ -203,6 +204,27 @@ def train_all_1m_config():
     return cfg
 
 
+def learn_from_assistant_config():
+    # Train all actuators for 1 million timesteps
+    cfg = _get_default_config()
+    cfg.experiment.name = "learn-from-assistant"
+    cfg.train.total_timesteps = int(1e6)
+    cfg.train.num_envs = (
+        4  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.train.learn_from_assistant_actions = True
+
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
 def train_all_5m_config():
     # Train all actuators for 1 million timesteps
     cfg = _get_default_config()
@@ -275,6 +297,7 @@ def get_config() -> Config:
         "train-all-5m": train_all_5m_config,
         "debug": debug_config,
         "debug-with-mlflow": debug_with_mlflow_config,
+        "learn-from-assistant": learn_from_assistant_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(

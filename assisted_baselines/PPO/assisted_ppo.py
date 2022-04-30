@@ -86,6 +86,7 @@ class AssistedPPO(OnPolicyAlgorithm):
         action_mask_schedule: BaseMaskSchedule,
         # assistant: BaseAssistant, #TODO remove
         tracker: AbstractTracker = None,
+        assistant_action_noise_std=0.1,
         assistant_available_probability: float = 0.2,
         learn_from_assistant_actions: bool = False,
         learning_rate: Union[float, Schedule] = 3e-4,
@@ -195,7 +196,7 @@ class AssistedPPO(OnPolicyAlgorithm):
         self.assistant_exploit_mode = True
         self.assistant_available_probability = assistant_available_probability
         self.learn_from_assistant_actions = learn_from_assistant_actions
-
+        self.assistant_action_noise_std = assistant_action_noise_std
         # Wrap the environment with the Assistantwrapper
         # self.env = AssistantWrapper(self.env, assistant)
 
@@ -581,10 +582,12 @@ class AssistedPPO(OnPolicyAlgorithm):
                     np.stack(assistant_actions, axis=0).astype(np.float32)
                 )
 
-                action_noise_std = 0.1
                 assistant_actions_noise = th.normal(
                     mean=th.zeros_like(assistant_actions),
-                    std=(action_noise_std * th.ones_like(assistant_actions)),
+                    std=(
+                        self.assistant_action_noise_std
+                        * th.ones_like(assistant_actions)
+                    ),
                 )
 
                 # TODO Clip the assistant's actions

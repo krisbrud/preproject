@@ -173,6 +173,8 @@ def train():
         mask_schedule,
         tracker=tracker,
         assistant_available_probability=cfg.assistance.assistant_available_probability,
+        learn_from_assistant_actions=cfg.train.learn_from_assistant_actions,
+        assistant_action_noise_std=cfg.assistance.assistant_action_noise_std,
         **hyperparams,
     )
 
