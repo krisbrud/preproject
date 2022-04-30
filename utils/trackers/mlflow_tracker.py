@@ -113,7 +113,7 @@ class MLFlowTracker(AbstractTracker):
         return True
 
     def __del__(self):
-        # Destructor. End the current run.
+        # Destructor. End the current run when object is cleaned up.
         mlflow.end_run()
 
 
@@ -157,5 +157,5 @@ class MLFlowOutputFormat(KVWriter):
         self.mlflow_tracker.log_metrics(metrics_to_log, step)
 
     def close(self):
-        # Do nothing
+        # Do nothing, this is handled by the tracker
         pass
