@@ -204,6 +204,26 @@ def train_all_1m_config():
     return cfg
 
 
+def higher_assistant_prob_config():
+    # Train all actuators for 1 million timesteps
+    cfg = _get_default_config()
+    cfg.experiment.name = "higher-assistant-prob-1m"
+    cfg.assistance.assistant_available_probability = 0.5
+    cfg.train.total_timesteps = int(1e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
 def learn_from_assistant_config():
     # Train all actuators for 1 million timesteps
     cfg = _get_default_config()
@@ -283,6 +303,27 @@ def debug_with_mlflow_config() -> Config:
     return cfg
 
 
+def debug_colav_config() -> Config:
+    # Train only elevator according to Simentha's paper draft
+    cfg = _get_default_config()
+    cfg.env.name = "PathColavAuv3D-v0"
+    cfg.experiment.name = "debug-colav"
+    cfg.train.total_timesteps = int(10e3)
+    cfg.train.num_envs = (
+        4  # More than one, so we use multiprocessing, but still easy to find
+    )
+    # cfg.train.mlflow_tracking_uri = None
+    cfg.train.n_eval_episodes = (
+        1  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
 def get_config() -> Config:
     """
     Parse the command line argument, pick the chosen config
@@ -298,6 +339,7 @@ def get_config() -> Config:
         "debug": debug_config,
         "debug-with-mlflow": debug_with_mlflow_config,
         "learn-from-assistant": learn_from_assistant_config,
+        "debug-colav": debug_colav_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
