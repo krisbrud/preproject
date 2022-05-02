@@ -477,7 +477,7 @@ def ppo_colav_larsen_hyperparam_config():
 
     # Train all actuators for 1 million timesteps with PPO
     cfg = _get_default_config()
-    cfg.experiment.name = "sippo-colav-larsen-hyperparam"
+    cfg.experiment.name = "ppo-colav-larsen-hyperparam"
     cfg.env.name = "PathColavAuv3D-v0"
 
     # Lower the learning rate
