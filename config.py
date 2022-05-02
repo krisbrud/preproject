@@ -507,6 +507,9 @@ def colav_high_assistance_config():
     cfg = _get_default_config()
     cfg.experiment.name = "colav-high-assistance"
     cfg.env.name = "PathColavAuv3D-v0"
+
+    cfg.assistance.assistant_action_noise_std = 1e-10  # In practice - no noise.
+
     cfg.train.total_timesteps = int(10e6)
     cfg.train.num_envs = (
         4  # More than one, so we use multiprocessing, but still easy to find
