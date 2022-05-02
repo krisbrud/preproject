@@ -554,6 +554,9 @@ def sippo_weighted_config():
             {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
         )
     )
+    cfg.assistance.assistant_action_noise_std = 1e-5
+    cfg.assistance.assistant_available_probability = 0.3
+
     return cfg
 
 
