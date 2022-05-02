@@ -324,6 +324,25 @@ def debug_colav_config() -> Config:
     return cfg
 
 
+def debug_colav2_config() -> Config:
+    # Train only elevator according to Simentha's paper draft
+    cfg = _get_default_config()
+    cfg.env.name = "PathColavAuv3D-v0"
+    cfg.experiment.name = "debug-colav2"
+    cfg.train.total_timesteps = int(50e3)
+    cfg.train.num_envs = 10
+    cfg.train.n_eval_episodes = (
+        1  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    cfg.assistance.assistant_available_probability = 0.5
+    return cfg
+
+
 def colav_10m_config():
     # Train all actuators for 1 million timesteps
     cfg = _get_default_config()
@@ -332,6 +351,27 @@ def colav_10m_config():
     cfg.train.total_timesteps = int(10e6)
     cfg.train.num_envs = (
         4  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def normal_ppo_config():
+    # Train all actuators for 1 million timesteps
+    cfg = _get_default_config()
+    cfg.experiment.name = "normal-ppo-10m"
+    cfg.env.name = "PathFollowAuv3D-v0"
+    cfg.train.algorithm = "PPO"
+    cfg.train.total_timesteps = int(10e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
     )
     cfg.train.n_eval_episodes = (
         100  # Just check that it doesn't crash, we don't care about it being many
@@ -383,6 +423,7 @@ def get_config() -> Config:
         "debug-colav": debug_colav_config,
         "colav-10m": colav_10m_config,
         "colav-high-assistance": colav_high_assistance_config,
+        "normal-ppo-10m": normal_ppo_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(

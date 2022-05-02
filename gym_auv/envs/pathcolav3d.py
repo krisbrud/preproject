@@ -547,7 +547,6 @@ class PathColav3d(gym.Env):
         return overlaps
 
     def scenario_beginner(self):
-        print("start scenario beginner")
         initial_state = np.zeros(6)
         self.current = Current(
             mu=0, Vmin=0, Vmax=0, Vc_init=0, alpha_init=0, beta_init=0, t_step=0
@@ -567,11 +566,9 @@ class PathColav3d(gym.Env):
             ]
         )
         initial_state = np.hstack([init_pos, init_attitude])
-        print("end scenario beginner")
         return initial_state
 
     def scenario_intermediate(self):
-        print("in scenario intermediate")
         initial_state = self.scenario_beginner()
         rad = np.random.uniform(4, 10)
         pos = self.path(self.path.length / 2)
@@ -587,11 +584,9 @@ class PathColav3d(gym.Env):
                 continue
             else:
                 self.obstacles.append(obstacle)
-        print("end scenario intermediate")
         return initial_state
 
     def scenario_proficient(self):
-        print("in scenario proficient")
         initial_state = self.scenario_intermediate()
         lengths = np.random.uniform(
             self.path.length * 1 / 3, self.path.length * 2 / 3, self.n_pro_obstacles
@@ -605,11 +600,9 @@ class PathColav3d(gym.Env):
                 continue
             else:
                 self.obstacles.append(obstacle)
-        print("end scenario proficient")
         return initial_state
 
     def scenario_advanced(self):
-        print("in scenario advanced")
         initial_state = self.scenario_proficient()
         while (
             len(self.obstacles) < self.n_adv_obstacles
@@ -624,11 +617,9 @@ class PathColav3d(gym.Env):
                 continue
             else:
                 self.obstacles.append(obstacle)
-        print("end scenario advanced")
         return initial_state
 
     def scenario_expert(self):
-        print("in scenario expert")
         initial_state = self.scenario_advanced()
         self.current = Current(
             mu=0.2,
@@ -640,7 +631,6 @@ class PathColav3d(gym.Env):
             t_step=self.step_size,
         )
         self.penalize_control = 1.0
-        print("end scenario expert")
         return initial_state
 
     def scenario_test_path(self):
