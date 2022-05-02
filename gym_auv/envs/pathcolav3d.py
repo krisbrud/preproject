@@ -64,8 +64,6 @@ class PathColav3d(gym.Env):
 
         self.scenario = scenario
 
-        print("initializing path colav!")
-
         self.n_sensor_readings = self.sensor_suite[0] * self.sensor_suite[1]
         max_horizontal_angle = self.sensor_span[0] / 2
         max_vertical_angle = self.sensor_span[1] / 2
@@ -104,7 +102,6 @@ class PathColav3d(gym.Env):
         """
         Resets environment to initial state.
         """
-        print("in pathcolav reset!")
         self.vessel = None
         self.path = None
         self.u_error = None
@@ -134,12 +131,9 @@ class PathColav3d(gym.Env):
         self.total_t_steps = 0
         self.reward = 0
 
-        print("generating environment")
         self.generate_environment()
-        print("environment generated!")
         self.update_control_errors()
         self.observation = self.observe(np.zeros(6, dtype=float))
-        print("end colav reset!")
         return self.observation
 
     def generate_environment(self):
