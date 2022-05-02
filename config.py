@@ -440,7 +440,7 @@ def normal_ppo_small_batch_config():
     return cfg
 
 
-def sippo_colav_new_hyperparam_config():
+def sippo_colav_larsen_hyperparam_config():
     # Based on hyperparameters from Thomas Nakken Larsen
     # https://github.com/ThomasNLarsen/gym-auv-3D/blob/master/train3d.py
 
@@ -513,6 +513,7 @@ def get_config() -> Config:
         "normal-ppo-10m": normal_ppo_config,
         "normal-ppo-10m-lower-lr": normal_ppo_lower_lr_config,
         "normal-ppo-10m-small-batch": normal_ppo_small_batch_config,
+        "sippo-colav-larsen-hyperparam": sippo_colav_larsen_hyperparam_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
