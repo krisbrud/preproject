@@ -449,7 +449,7 @@ def get_config() -> Config:
         "colav-10m": colav_10m_config,
         "colav-high-assistance": colav_high_assistance_config,
         "normal-ppo-10m": normal_ppo_config,
-        "normal-ppo-10m-lower-lr": normal_ppo_config_lower_lr,
+        "normal-ppo-10m-lower-lr": normal_ppo_lower_lr_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
