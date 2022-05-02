@@ -230,37 +230,6 @@ class AssistedPPO(OnPolicyAlgorithm):
 
             self.clip_range_vf = get_schedule_fn(self.clip_range_vf)
 
-    def _setup_learn(
-        self,
-        total_timesteps: int,
-        eval_env: Optional[GymEnv],
-        callback: MaybeCallback = None,
-        eval_freq: int = 10000,
-        n_eval_episodes: int = 5,
-        log_path: Optional[str] = None,
-        reset_num_timesteps: bool = True,
-        tb_log_name: str = "run",
-    ) -> Tuple[int, BaseCallback]:
-        return_vals = super()._setup_learn(
-            total_timesteps,
-            eval_env,
-            callback,
-            eval_freq,
-            n_eval_episodes,
-            log_path,
-            reset_num_timesteps,
-            tb_log_name,
-        )
-
-        # Add MLFlow-tracker output format to logger, such that metrics we log
-        if self.tracker is not None and isinstance(self.tracker, MLFlowTracker):
-            # Make the logger log metrics from the training monitor to MLFlow as well
-            self.logger.output_formats.append(
-                MLFlowOutputFormat(mlflow_tracker=self.tracker)
-            )
-
-        return return_vals
-
     def train(self) -> None:
         """
         Update policy using the currently gathered rollout buffer.
