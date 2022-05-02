@@ -440,6 +440,37 @@ def normal_ppo_small_batch_config():
     return cfg
 
 
+def sippo_colav_new_hyperparam_config():
+    # Based on hyperparameters from Thomas Nakken Larsen
+    # https://github.com/ThomasNLarsen/gym-auv-3D/blob/master/train3d.py
+
+    # Train all actuators for 10 million timesteps with PPO
+    cfg = _get_default_config()
+    cfg.experiment.name = "sippo-colav-larsen-hyperparam"
+    cfg.env.name = "PathColavAuv3D-v0"
+
+    # Lower the learning rate
+    cfg.hyperparam.learning_rate = 2.5e-4
+    cfg.hyperparam.batch_size = 64
+    cfg.hyperparam.gamma = 0.99
+    cfg.hyperparam.ent_coef = 0.001
+
+    cfg.train.algorithm = "AssistedPPO"
+    cfg.train.total_timesteps = int(10e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
 def colav_high_assistance_config():
     # Train all actuators for 1 million timesteps
     cfg = _get_default_config()
