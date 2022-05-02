@@ -615,15 +615,15 @@ class AssistedPPO(OnPolicyAlgorithm):
 
                 # TODO Remove: The assistant actions are too extreme - reduce the amplitude
 
-                if first_step:
-                    print("agent values", agent_values)
-                    print("assistant values", assistant_values)
-                    print("is agent chosen", is_agent_chosen)
-                    print("is agent chosen size", is_agent_chosen.size())
-                    # print("assistance rate", assistance_rate)
-                    print("agent actions", agent_actions)
-                    print("assistant actions", noisy_assistant_actions)
-                    first_step = False
+                # if first_step and False:
+                # print("agent values", agent_values)
+                # print("assistant values", assistant_values)
+                # print("is agent chosen", is_agent_chosen)
+                # print("is agent chosen size", is_agent_chosen.size())
+                # print("assistance rate", assistance_rate)
+                # print("agent actions", agent_actions)
+                # print("assistant actions", noisy_assistant_actions)
+                # first_step = False
 
                 rollout_agent_actions.append(agent_actions.numpy())
                 rollout_assistant_actions.append(noisy_assistant_actions.numpy())
