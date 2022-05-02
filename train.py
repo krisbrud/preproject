@@ -167,6 +167,8 @@ def train():
     else:
         tracker = None
 
+    print("cfg assistant available probability", cfg.assistance.assistant_available_probability)
+
     agent = AssistedPPO(
         "AssistedPolicy",
         env,

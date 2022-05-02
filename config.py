@@ -324,6 +324,47 @@ def debug_colav_config() -> Config:
     return cfg
 
 
+def colav_10m_config():
+    # Train all actuators for 1 million timesteps
+    cfg = _get_default_config()
+    cfg.experiment.name = "colav-10m"
+    cfg.env.name = "PathColavAuv3D-v0"
+    cfg.train.total_timesteps = int(10e6)
+    cfg.train.num_envs = (
+        4  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def colav_high_assistance_config():
+    # Train all actuators for 1 million timesteps
+    cfg = _get_default_config()
+    cfg.experiment.name = "colav-high-assistance"
+    cfg.env.name = "PathColavAuv3D-v0"
+    cfg.train.total_timesteps = int(10e6)
+    cfg.train.num_envs = (
+        4  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    cfg.assistance.assistant_available_probability = 0.8
+    return cfg
+
+
 def get_config() -> Config:
     """
     Parse the command line argument, pick the chosen config
@@ -340,6 +381,8 @@ def get_config() -> Config:
         "debug-with-mlflow": debug_with_mlflow_config,
         "learn-from-assistant": learn_from_assistant_config,
         "debug-colav": debug_colav_config,
+        "colav-10m": colav_10m_config,
+        "colav-high-assistance": colav_high_assistance_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
