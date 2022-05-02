@@ -364,10 +364,35 @@ def colav_10m_config():
 
 
 def normal_ppo_config():
-    # Train all actuators for 1 million timesteps
+    # Train all actuators for 10 million timesteps with PPO
     cfg = _get_default_config()
     cfg.experiment.name = "normal-ppo-10m"
     cfg.env.name = "PathFollowAuv3D-v0"
+    cfg.train.algorithm = "PPO"
+    cfg.train.total_timesteps = int(10e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def normal_ppo_lower_lr_config():
+    # Train all actuators for 10 million timesteps with PPO
+    cfg = _get_default_config()
+    cfg.experiment.name = "normal-ppo-10m-lower-lr"
+    cfg.env.name = "PathFollowAuv3D-v0"
+
+    # Lower the learning rate
+    cfg.hyperparam.learning_rate = 5e-5
+
     cfg.train.algorithm = "PPO"
     cfg.train.total_timesteps = int(10e6)
     cfg.train.num_envs = (
@@ -424,6 +449,7 @@ def get_config() -> Config:
         "colav-10m": colav_10m_config,
         "colav-high-assistance": colav_high_assistance_config,
         "normal-ppo-10m": normal_ppo_config,
+        "normal-ppo-10m-lower-lr": normal_ppo_config_lower_lr,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
