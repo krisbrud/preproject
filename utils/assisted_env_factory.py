@@ -50,6 +50,35 @@ def get_eval_env(cfg: Config):
     return env
 
 
+def get_normal_envs(cfg: Config):
+    # Make a normal environment without the Assistant wrapper, e.g. for normal PPO benchmarking
+    if cfg.train.num_envs > 1:
+        env = SubprocVecEnv(
+            [
+                lambda: Monitor(
+                    gym.make(cfg.env.name),
+                    cfg.system.output_path,
+                    allow_early_resets=True,
+                )
+                for i in range(cfg.train.num_envs)
+            ]
+        )
+
+    else:
+        # Only one env
+        env = DummyVecEnv(
+            [
+                lambda: Monitor(
+                    gym.make(cfg.env.name),
+                    cfg.system.output_path,
+                    allow_early_resets=True,
+                )
+            ]
+        )
+
+    return env
+
+
 def get_assisted_envs(cfg: Config):
     if cfg.train.num_envs > 1:
         env = SubprocVecEnv(

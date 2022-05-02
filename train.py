@@ -25,7 +25,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 from stable_baselines3.common.evaluation import evaluate_policy
-from utils.assisted_env_factory import get_assisted_envs, get_eval_env
+from utils.assisted_env_factory import get_assisted_envs, get_eval_env, get_normal_envs
 
 # from utils.azuremlutils import get_mlflow_uri_from_aml_workspace_config
 
@@ -115,8 +115,11 @@ def train():
     # Initialize a new agent from scratch
     # agent = PPO("MlpPolicy", env, **hyperparams)
 
-    env = get_assisted_envs(cfg)
-    mask_schedule = cfg.assistance.mask_schedule
+    if cfg.train.algorithm == "AssistedPPO":
+        env = get_assisted_envs(cfg)
+        mask_schedule = cfg.assistance.mask_schedule
+    else:
+        env = get_normal_envs(cfg)
 
     # print(f"env action space {env.action_space}")
 
@@ -138,9 +141,7 @@ def train():
         tracker.log_params(hyperparams, prefix="hyperparams")
 
         # tracker.log_params(dataclasses.asdict(cfg.assistance), cfg.assistance.auv_pid)
-        tracker.log_params(
-            dataclasses.asdict(cfg.env),
-        )
+        tracker.log_params(dataclasses.asdict(cfg.env), prefix="env")
         tracker.log_params(dataclasses.asdict(cfg.experiment), prefix="experiment")
         tracker.log_params(dataclasses.asdict(cfg.system), prefix="system")
         train_dict = dataclasses.asdict(cfg.train)
@@ -167,16 +168,26 @@ def train():
     else:
         tracker = None
 
-    agent = AssistedPPO(
-        "AssistedPolicy",
-        env,
-        mask_schedule,
-        tracker=tracker,
-        assistant_available_probability=cfg.assistance.assistant_available_probability,
-        learn_from_assistant_actions=cfg.train.learn_from_assistant_actions,
-        assistant_action_noise_std=cfg.assistance.assistant_action_noise_std,
-        **hyperparams,
+    print(
+        "cfg assistant available probability",
+        cfg.assistance.assistant_available_probability,
     )
+
+    if cfg.train.algorithm == "AssistedPPO":
+        print("Using AssistedPPO")
+        agent = AssistedPPO(
+            "AssistedPolicy",
+            env,
+            mask_schedule,
+            tracker=tracker,
+            assistant_available_probability=cfg.assistance.assistant_available_probability,
+            learn_from_assistant_actions=cfg.train.learn_from_assistant_actions,
+            assistant_action_noise_std=cfg.assistance.assistant_action_noise_std,
+            **hyperparams,
+        )
+    elif cfg.train.algorithm == "PPO":
+        print("Using normal PPO")
+        agent = PPO("MlpPolicy", env, **hyperparams)
 
     save_and_track_callback = SaveAndTrackCallback(
         cfg.system.output_path, tracker=tracker, save_freq=save_freq

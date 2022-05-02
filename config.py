@@ -204,6 +204,26 @@ def train_all_1m_config():
     return cfg
 
 
+def higher_assistant_prob_config():
+    # Train all actuators for 1 million timesteps
+    cfg = _get_default_config()
+    cfg.experiment.name = "higher-assistant-prob-1m"
+    cfg.assistance.assistant_available_probability = 0.5
+    cfg.train.total_timesteps = int(1e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
 def learn_from_assistant_config():
     # Train all actuators for 1 million timesteps
     cfg = _get_default_config()
@@ -283,6 +303,229 @@ def debug_with_mlflow_config() -> Config:
     return cfg
 
 
+def debug_colav_config() -> Config:
+    # Train only elevator according to Simentha's paper draft
+    cfg = _get_default_config()
+    cfg.env.name = "PathColavAuv3D-v0"
+    cfg.experiment.name = "debug-colav"
+    cfg.train.total_timesteps = int(10e3)
+    cfg.train.num_envs = (
+        4  # More than one, so we use multiprocessing, but still easy to find
+    )
+    # cfg.train.mlflow_tracking_uri = None
+    cfg.train.n_eval_episodes = (
+        1  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def debug_colav2_config() -> Config:
+    # Train only elevator according to Simentha's paper draft
+    cfg = _get_default_config()
+    cfg.env.name = "PathColavAuv3D-v0"
+    cfg.experiment.name = "debug-colav2"
+    cfg.train.total_timesteps = int(50e3)
+    cfg.train.num_envs = 10
+    cfg.train.n_eval_episodes = (
+        1  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    cfg.assistance.assistant_available_probability = 0.5
+    return cfg
+
+
+def colav_10m_config():
+    # Train all actuators for 1 million timesteps
+    cfg = _get_default_config()
+    cfg.experiment.name = "colav-10m"
+    cfg.env.name = "PathColavAuv3D-v0"
+    cfg.train.total_timesteps = int(10e6)
+    cfg.train.num_envs = (
+        4  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def normal_ppo_config():
+    # Train all actuators for 10 million timesteps with PPO
+    cfg = _get_default_config()
+    cfg.experiment.name = "normal-ppo-10m"
+    cfg.env.name = "PathFollowAuv3D-v0"
+    cfg.train.algorithm = "PPO"
+    cfg.train.total_timesteps = int(10e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def normal_ppo_lower_lr_config():
+    # Train all actuators for 10 million timesteps with PPO
+    cfg = _get_default_config()
+    cfg.experiment.name = "normal-ppo-10m-lower-lr"
+    cfg.env.name = "PathFollowAuv3D-v0"
+
+    # Lower the learning rate
+    cfg.hyperparam.learning_rate = 5e-5
+
+    cfg.train.algorithm = "PPO"
+    cfg.train.total_timesteps = int(10e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def normal_ppo_small_batch_config():
+    # Based on hyperparameters from Thomas Nakken Larsen
+    # https://github.com/ThomasNLarsen/gym-auv-3D/blob/master/train3d.py
+
+    # Train all actuators for 10 million timesteps with PPO
+    cfg = _get_default_config()
+    cfg.experiment.name = "normal-ppo-10m-small-batch"
+    cfg.env.name = "PathFollowAuv3D-v0"
+
+    # Lower the learning rate
+    cfg.hyperparam.learning_rate = 2.5e-4
+    cfg.hyperparam.batch_size = 64
+    cfg.hyperparam.gamma = 0.99
+    cfg.hyperparam.ent_coef = 0.001
+
+    cfg.train.algorithm = "PPO"
+    cfg.train.total_timesteps = int(10e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def sippo_colav_larsen_hyperparam_config():
+    # Based on hyperparameters from Thomas Nakken Larsen
+    # https://github.com/ThomasNLarsen/gym-auv-3D/blob/master/train3d.py
+
+    # Train all actuators for 10 million timesteps with SiPPO
+    cfg = _get_default_config()
+    cfg.experiment.name = "sippo-colav-larsen-hyperparam"
+    cfg.env.name = "PathColavAuv3D-v0"
+
+    # Lower the learning rate
+    cfg.hyperparam.learning_rate = 2.5e-4
+    cfg.hyperparam.batch_size = 64
+    cfg.hyperparam.gamma = 0.99
+    cfg.hyperparam.ent_coef = 0.001
+
+    cfg.train.algorithm = "AssistedPPO"
+    cfg.train.total_timesteps = int(1e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def ppo_colav_larsen_hyperparam_config():
+    # Based on hyperparameters from Thomas Nakken Larsen
+    # https://github.com/ThomasNLarsen/gym-auv-3D/blob/master/train3d.py
+
+    # Train all actuators for 1 million timesteps with PPO
+    cfg = _get_default_config()
+    cfg.experiment.name = "ppo-colav-larsen-hyperparam"
+    cfg.env.name = "PathColavAuv3D-v0"
+
+    # Lower the learning rate
+    cfg.hyperparam.learning_rate = 2.5e-4
+    cfg.hyperparam.batch_size = 64
+    cfg.hyperparam.gamma = 0.99
+    cfg.hyperparam.ent_coef = 0.001
+
+    cfg.train.algorithm = "PPO"
+    cfg.train.total_timesteps = int(1e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
+def colav_high_assistance_config():
+    # Train all actuators for 1 million timesteps
+    cfg = _get_default_config()
+    cfg.experiment.name = "colav-high-assistance"
+    cfg.env.name = "PathColavAuv3D-v0"
+
+    cfg.assistance.assistant_action_noise_std = 1e-10  # In practice - no noise.
+
+    cfg.train.total_timesteps = int(10e6)
+    cfg.train.num_envs = (
+        4  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    cfg.assistance.assistant_available_probability = 0.8
+    return cfg
+
+
 def get_config() -> Config:
     """
     Parse the command line argument, pick the chosen config
@@ -298,6 +541,14 @@ def get_config() -> Config:
         "debug": debug_config,
         "debug-with-mlflow": debug_with_mlflow_config,
         "learn-from-assistant": learn_from_assistant_config,
+        "debug-colav": debug_colav_config,
+        "colav-10m": colav_10m_config,
+        "colav-high-assistance": colav_high_assistance_config,
+        "normal-ppo-10m": normal_ppo_config,
+        "normal-ppo-10m-lower-lr": normal_ppo_lower_lr_config,
+        "normal-ppo-10m-small-batch": normal_ppo_small_batch_config,
+        "sippo-colav-larsen-hyperparam": sippo_colav_larsen_hyperparam_config,
+        "ppo-colav-larsen-hyperparam": ppo_colav_larsen_hyperparam_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
