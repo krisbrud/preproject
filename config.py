@@ -456,7 +456,7 @@ def sippo_colav_new_hyperparam_config():
     cfg.hyperparam.ent_coef = 0.001
 
     cfg.train.algorithm = "AssistedPPO"
-    cfg.train.total_timesteps = int(10e6)
+    cfg.train.total_timesteps = int(1e6)
     cfg.train.num_envs = (
         10  # More than one, so we use multiprocessing, but still easy to find
     )
