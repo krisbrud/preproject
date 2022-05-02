@@ -526,14 +526,14 @@ def colav_high_assistance_config():
     return cfg
 
 
-def sippo_learn_from_weighted_advantages_config():
+def sippo_weighted_config():
     # Based on hyperparameters from Thomas Nakken Larsen
     # https://github.com/ThomasNLarsen/gym-auv-3D/blob/master/train3d.py
 
     # Train all actuators for 1m timesteps with SiPPO
     cfg = _get_default_config()
-    cfg.experiment.name = "sippo-learn-from-weighted-advantages"
-    cfg.env.name = "PathColavAuv3D-v0"
+    cfg.experiment.name = "sippo-weighted-path-follow"
+    cfg.env.name = "PathFollowAuv3D-v0"
 
     # Lower the learning rate
     cfg.hyperparam.learning_rate = 2.5e-4
@@ -580,6 +580,7 @@ def get_config() -> Config:
         "normal-ppo-10m-small-batch": normal_ppo_small_batch_config,
         "sippo-colav-larsen-hyperparam": sippo_colav_larsen_hyperparam_config,
         "ppo-colav-larsen-hyperparam": ppo_colav_larsen_hyperparam_config,
+        "sippo-weighted-path-follow": sippo_weighted_config,,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
