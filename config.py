@@ -545,7 +545,7 @@ def get_config() -> Config:
         "normal-ppo-10m-lower-lr": normal_ppo_lower_lr_config,
         "normal-ppo-10m-small-batch": normal_ppo_small_batch_config,
         "sippo-colav-larsen-hyperparam": sippo_colav_larsen_hyperparam_config,
-        "ppo-colav-larsen-hyperparam-config": ppo_colav_larsen_hyperparam_config,
+        "ppo-colav-larsen-hyperparam": ppo_colav_larsen_hyperparam_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
