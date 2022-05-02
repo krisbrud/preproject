@@ -333,7 +333,12 @@ class AssistedPPO(OnPolicyAlgorithm):
 
                 if self.learn_from_assistant_actions:
                     advantages = rollout_data.advantages
+                    ratio = th.exp(log_prob - rollout_data.old_log_prob)
                 else:
+                    ratio = th.exp(log_prob - rollout_data.old_log_prob)[
+                        is_agent_chosen
+                    ]
+                    # ratio between old and new policy, should be one at the first iteration
                     advantages = rollout_data.advantages[is_agent_chosen]
 
                 if self.normalize_advantage:
@@ -341,13 +346,16 @@ class AssistedPPO(OnPolicyAlgorithm):
                         advantages.std() + 1e-8
                     )
 
-                # ratio between old and new policy, should be one at the first iteration
                 if self.learn_from_assistant_actions:
-                    ratio = th.exp(log_prob - rollout_data.old_log_prob)
-                else:
-                    ratio = th.exp(log_prob - rollout_data.old_log_prob)[
-                        is_agent_chosen
-                    ]
+                    # Rescale the advantages corresponding to assistant actions with the "probability"
+                    # i.e. pdf evaluated at pi_old(a_t | s_t) to deal with
+                    advantage_weights = th.where(
+                        is_agent_chosen,
+                        th.ones_like(advantages),
+                        th.exp(rollout_data.old_log_prob),
+                    )
+                    # Advantages are kept the same where agent action was taken.
+                    advantages = advantages * advantage_weights
 
                 if self._first_rollout and first_batch:
                     first_batch = False
