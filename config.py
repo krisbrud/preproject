@@ -502,6 +502,37 @@ def ppo_colav_larsen_hyperparam_config():
     return cfg
 
 
+def ppo_follow_larsen_hyperparam_config():
+    # Based on hyperparameters from Thomas Nakken Larsen
+    # https://github.com/ThomasNLarsen/gym-auv-3D/blob/master/train3d.py
+
+    # Train all actuators for 1 million timesteps with PPO
+    cfg = _get_default_config()
+    cfg.experiment.name = "ppo-follow-larsen-hyperparam"
+    cfg.env.name = "PathFollowAuv3D-v0"
+
+    # Lower the learning rate
+    cfg.hyperparam.learning_rate = 2.5e-4
+    cfg.hyperparam.batch_size = 64
+    cfg.hyperparam.gamma = 0.99
+    cfg.hyperparam.ent_coef = 0.001
+
+    cfg.train.algorithm = "PPO"
+    cfg.train.total_timesteps = int(1e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    return cfg
+
+
 def colav_high_assistance_config():
     # Train all actuators for 1 million timesteps
     cfg = _get_default_config()
@@ -619,6 +650,7 @@ def get_config() -> Config:
         "ppo-colav-larsen-hyperparam": ppo_colav_larsen_hyperparam_config,
         "sippo-weighted-path-follow": sippo_weighted_config,
         "sippo-weighted-path-colav": sippo_colav_weighted_config,
+        "ppo-follow-larsen-hyperparam": ppo_follow_larsen_hyperparam_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
