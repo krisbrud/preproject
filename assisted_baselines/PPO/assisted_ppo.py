@@ -230,37 +230,6 @@ class AssistedPPO(OnPolicyAlgorithm):
 
             self.clip_range_vf = get_schedule_fn(self.clip_range_vf)
 
-    def _setup_learn(
-        self,
-        total_timesteps: int,
-        eval_env: Optional[GymEnv],
-        callback: MaybeCallback = None,
-        eval_freq: int = 10000,
-        n_eval_episodes: int = 5,
-        log_path: Optional[str] = None,
-        reset_num_timesteps: bool = True,
-        tb_log_name: str = "run",
-    ) -> Tuple[int, BaseCallback]:
-        return_vals = super()._setup_learn(
-            total_timesteps,
-            eval_env,
-            callback,
-            eval_freq,
-            n_eval_episodes,
-            log_path,
-            reset_num_timesteps,
-            tb_log_name,
-        )
-
-        # Add MLFlow-tracker output format to logger, such that metrics we log
-        if self.tracker is not None and isinstance(self.tracker, MLFlowTracker):
-            # Make the logger log metrics from the training monitor to MLFlow as well
-            self.logger.output_formats.append(
-                MLFlowOutputFormat(mlflow_tracker=self.tracker)
-            )
-
-        return return_vals
-
     def train(self) -> None:
         """
         Update policy using the currently gathered rollout buffer.
@@ -333,7 +302,12 @@ class AssistedPPO(OnPolicyAlgorithm):
 
                 if self.learn_from_assistant_actions:
                     advantages = rollout_data.advantages
+                    ratio = th.exp(log_prob - rollout_data.old_log_prob)
                 else:
+                    ratio = th.exp(log_prob - rollout_data.old_log_prob)[
+                        is_agent_chosen
+                    ]
+                    # ratio between old and new policy, should be one at the first iteration
                     advantages = rollout_data.advantages[is_agent_chosen]
 
                 if self.normalize_advantage:
@@ -341,13 +315,16 @@ class AssistedPPO(OnPolicyAlgorithm):
                         advantages.std() + 1e-8
                     )
 
-                # ratio between old and new policy, should be one at the first iteration
                 if self.learn_from_assistant_actions:
-                    ratio = th.exp(log_prob - rollout_data.old_log_prob)
-                else:
-                    ratio = th.exp(log_prob - rollout_data.old_log_prob)[
-                        is_agent_chosen
-                    ]
+                    # Rescale the advantages corresponding to assistant actions with the "probability"
+                    # i.e. pdf evaluated at pi_old(a_t | s_t) to deal with
+                    advantage_weights = th.where(
+                        is_agent_chosen,
+                        th.ones_like(advantages),
+                        th.exp(rollout_data.old_log_prob),
+                    )
+                    # Advantages are kept the same where agent action was taken.
+                    advantages = advantages * advantage_weights
 
                 if self._first_rollout and first_batch:
                     first_batch = False

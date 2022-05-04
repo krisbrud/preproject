@@ -4,6 +4,8 @@ import os
 from stable_baselines3.common.callbacks import BaseCallback, EventCallback
 from stable_baselines3.common.monitor import Monitor
 
+from utils.trackers.mlflow_tracker import MLFlowOutputFormat, MLFlowTracker
+
 
 class AbstractTracker(ABC):
     def __init__(self):
@@ -51,6 +53,16 @@ class SaveAndTrackCallback(BaseCallback):
         """
         This method is called before the first rollout starts.
         """
+        # Add MLFlow-tracker output format to logger, such that metrics we log
+        # are automagically persisted to mlflow
+
+        # Note that we need to do this here, as it needs to be done between _setup_learn() where the
+        # logger is initialized and the start of the rollouts/training
+        if self.tracker is not None and isinstance(self.tracker, MLFlowTracker):
+            print("Adding MLFlow output format to logger!")
+            self.model.logger.output_formats.append(
+                MLFlowOutputFormat(mlflow_tracker=self.tracker)
+            )
 
     def _on_rollout_start(self) -> None:
         """
