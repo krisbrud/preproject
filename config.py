@@ -37,15 +37,15 @@ class SystemConfig:
 class HyperparamConfig:
     # Also see https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html#parameters
     # for more details
-    n_steps: int = 1024
-    learning_rate: float = 5e-4  # 5e-5
-    batch_size: int = 1024
-    gae_lambda: float = 0.95
+    n_steps: int = 1024  # Number of steps taken in environment before optimizing
+    learning_rate: float = 5e-4
+    batch_size: int = 1024  # Number of samples in each batch during optimization
+    gae_lambda: float = 0.95  # General Advantage Estimation discount rate
     gamma: float = 0.999  # Discount factor
-    n_epochs = 4  # Number of epochs per rollout
+    n_epochs: int = 4  # Number of epochs per rollout
     clip_range: float = 0.2  # Clip range for PPO objective function
     ent_coef: float = 0.01  # Coefficient for entropy loss
-    verbose: int = 2
+    verbose: int = 2  # Verbosity level of Algorithm during training
 
 
 @dataclass
