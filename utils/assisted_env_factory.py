@@ -3,7 +3,7 @@ import gym
 from stable_baselines3.common.vec_env.dummy_vec_env import DummyVecEnv
 from stable_baselines3.common.vec_env.subproc_vec_env import SubprocVecEnv
 from stable_baselines3.common.monitor import Monitor
-from assisted_baselines.common.assistant import AssistantWrapper
+from assisted_baselines.common.assistant import AssistantWrapper, BaseAssistant
 
 from config import Config
 from assisted_baselines.common.assistants.pid import (
@@ -11,6 +11,7 @@ from assisted_baselines.common.assistants.pid import (
     PIDController,
     PIDGains,
 )
+from utils.mountainassist import MountainCarAssistant
 
 
 def make_pid_controller(gains: PIDGains, timestep: float):
@@ -78,6 +79,15 @@ def get_normal_envs(cfg: Config):
 
     return env
 
+def make_mountain_car_assistant(cfg: Config) -> MountainCarAssistant:
+    return MountainCarAssistant(n_actions=1, heuristic_action = cfg.assistance.mountain_car_heuristic)
+
+def make_assistant(cfg: Config) -> BaseAssistant:
+    if "AUV" in cfg.env.name:
+        return make_pid_assistant(cfg)
+    elif cfg.env.name == "MountainCarContinuous":
+        return make_mountain_car_assistant(cfg)
+    raise ValueError(f"No assistant found for environment {cfg.env.name}!")
 
 def get_assisted_envs(cfg: Config):
     if cfg.train.num_envs > 1:
@@ -86,7 +96,7 @@ def get_assisted_envs(cfg: Config):
                 lambda: Monitor(
                     AssistantWrapper(
                         gym.make(cfg.env.name),
-                        assistant=make_pid_assistant(cfg),
+                        assistant=make_assistant(cfg),
                         # initial_mask=cfg.assistance.mask_schedule.get_mask(0),
                     ),
                     cfg.system.output_path,
@@ -102,7 +112,7 @@ def get_assisted_envs(cfg: Config):
                 lambda: Monitor(
                     AssistantWrapper(
                         gym.make(cfg.env.name),
-                        make_pid_assistant(cfg),
+                        make_assistant(cfg),
                         # initial_mask=cfg.assistance.mask_schedule.get_mask(0),
                     ),
                     cfg.system.output_path,

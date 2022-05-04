@@ -4,6 +4,7 @@ import dataclasses
 import os
 
 from dataclasses import dataclass
+from typing import Any, Dict, Union
 
 from pytablewriter import Bool
 
@@ -45,7 +46,11 @@ class HyperparamConfig:
     n_epochs: int = 4  # Number of epochs per rollout
     clip_range: float = 0.2  # Clip range for PPO objective function
     ent_coef: float = 0.01  # Coefficient for entropy loss
-    verbose: int = 2  # Verbosity level of Algorithm during training
+    verbose: int = 2  # Verbosity level of RL algorithm during training
+    max_grad_norm: float = 0.5
+    vf_coef: float = 0.5
+    use_sde: float = False
+    policy_kwargs: Union[Dict[str, Any], None] = None
 
 
 @dataclass
@@ -85,6 +90,8 @@ class AssistanceConfig:
     auv_pid: AuvPidConfig = AuvPidConfig()
     assistant_available_probability = 0.2
     assistant_action_noise_std = 0.1
+
+    mountain_car_heuristic: float = 0.7
 
 
 @dataclass
@@ -659,6 +666,87 @@ def sippo_colav_weighted_config():
     return cfg
 
 
+"""
+MountainCarContinuous-v0:
+  normalize: true
+  n_envs: 1
+  n_timesteps: !!float 20000
+  policy: 'MlpPolicy'
+  batch_size: 256
+  n_steps: 8
+  gamma: 0.9999
+  learning_rate: !!float 7.77e-05
+  ent_coef: 0.00429
+  clip_range: 0.1
+  n_epochs: 10
+  gae_lambda: 0.9
+  max_grad_norm: 5
+  vf_coef: 0.19
+  use_sde: True
+  policy_kwargs: "dict(log_std_init=-3.29, ortho_init=False)"
+"""
+
+
+def mountain_car_ppo_baseline_config():
+    cfg = _get_default_config()
+
+    # Best hyperparameters according to
+    # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml
+
+    cfg.experiment.name = "mountain-car-ppo-baseline"
+
+    cfg.env.name = "MountainCarContinuous-v0"
+
+    cfg.train.algorithm = "PPO"
+    cfg.train.total_timesteps = int(1e6)
+
+    cfg.train.num_envs = 1
+    cfg.hyperparam.batch_size = 256
+    cfg.hyperparam.n_steps = 8
+    cfg.hyperparam.gamma = 0.9999
+    cfg.hyperparam.learning_rate = 7.77e-05
+    cfg.hyperparam.ent_coef = 0.00429
+    cfg.hyperparam.clip_range = 0.1
+    cfg.hyperparam.n_epochs = 10
+    cfg.hyperparam.gae_lambda = 0.9
+    cfg.hyperparam.max_grad_norm = 5
+    cfg.hyperparam.vf_coef = 0.19
+    cfg.hyperparam.use_sde = True
+    cfg.hyperparam.policy_kwargs = {"log_std_init": -3.29, "ortho_init": False}
+
+    return cfg
+
+
+def mountain_car_ppo_default_config():
+    cfg = _get_default_config()
+
+    # Best hyperparameters according to
+    # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml
+
+    cfg.experiment.name = "mountain-car-ppo-default-param"
+
+    cfg.env.name = "MountainCarContinuous-v0"
+
+    cfg.train.algorithm = "PPO"
+    cfg.train.total_timesteps = int(1e6)
+
+    cfg.train.num_envs = 10
+    cfg.hyperparam.n_steps = 2048
+    cfg.hyperparam.batch_size = 64
+    cfg.hyperparam.gamma = 0.99
+    cfg.hyperparam.learning_rate = 3e-4
+    cfg.hyperparam.ent_coef = 0.01
+    cfg.hyperparam.clip_range = 0.2
+    cfg.hyperparam.n_epochs = 10
+    cfg.hyperparam.gae_lambda = 0.9
+    cfg.hyperparam.max_grad_norm = 0.5
+    cfg.hyperparam.vf_coef = 0.5
+    cfg.hyperparam.use_sde = False
+    cfg.hyperparam.policy_kwargs = None
+
+    return cfg
+
+
 def get_config() -> Config:
     """
     Parse the command line argument, pick the chosen config
@@ -686,6 +774,8 @@ def get_config() -> Config:
         "sippo-weighted-path-colav": sippo_colav_weighted_config,
         "ppo-follow-larsen-hyperparam": ppo_follow_larsen_hyperparam_config,
         "sippo-weighted-more-noise-path-follow": sippo_weighted_more_noise_config,
+        "mountain-car-ppo-baseline": mountain_car_ppo_baseline_config,
+        "mountain-car-ppo-default-config": mountain_car_ppo_default_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
