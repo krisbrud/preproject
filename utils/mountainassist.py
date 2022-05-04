@@ -1,3 +1,4 @@
+from typing import Union
 from assisted_baselines.common.assistant import BaseAssistant
 import numpy as np
 import torch
