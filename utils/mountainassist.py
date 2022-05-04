@@ -11,15 +11,22 @@ class MountainCarAssistant(BaseAssistant):
         # Define high and low
         x_bottom = -(np.pi / 2) / 3  # Bottom of mountain valley
         x_delta = 0.3
-        self.low = x_bottom - x_delta
-        self.high = x_bottom + x_delta
+        self._low = x_bottom - x_delta
+        self._high = x_bottom + x_delta
 
         self.heuristic_action = heuristic_action
 
     def get_action(self, observation: np.ndarray) -> np.ndarray:
         # Return an action of size heuristic action in the direction of
         # the velocity
-        if observation[1] >= 0:
+        pos, vel = observation
+        is_in_heuristic_zone = self._low <= pos <= self._high
+        if not is_in_heuristic_zone:
+            # Don't apply force/torque
+            return 0
+
+        # If in heuristic zone, give action
+        if vel >= 0:
             return self.heuristic_action
         else:
             return -self.heuristic_action

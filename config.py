@@ -747,6 +747,38 @@ def mountain_car_ppo_default_config():
     return cfg
 
 
+def mountain_car_sippo_default_config():
+    cfg = _get_default_config()
+
+    # Best hyperparameters according to
+    # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml
+
+    cfg.experiment.name = "mountain-car-sippo-default-param"
+
+    cfg.env.name = "MountainCarContinuous-v0"
+
+    cfg.train.algorithm = "AssistedPPO"
+    cfg.train.total_timesteps = int(1e6)
+
+    cfg.train.num_envs = 10
+    cfg.hyperparam.n_steps = 2048
+    cfg.hyperparam.batch_size = 64
+    cfg.hyperparam.gamma = 0.99
+    cfg.hyperparam.learning_rate = 3e-4
+    cfg.hyperparam.ent_coef = 0.01
+    cfg.hyperparam.clip_range = 0.2
+    cfg.hyperparam.n_epochs = 10
+    cfg.hyperparam.gae_lambda = 0.9
+    cfg.hyperparam.max_grad_norm = 0.5
+    cfg.hyperparam.vf_coef = 0.5
+    cfg.hyperparam.use_sde = False
+    cfg.hyperparam.policy_kwargs = None
+
+    cfg.assistance.mountain_car_heuristic = 0.7
+
+    return cfg
+
+
 def get_config() -> Config:
     """
     Parse the command line argument, pick the chosen config
