@@ -808,6 +808,7 @@ def get_config() -> Config:
         "sippo-weighted-more-noise-path-follow": sippo_weighted_more_noise_config,
         "mountain-car-ppo-baseline": mountain_car_ppo_baseline_config,
         "mountain-car-ppo-default-config": mountain_car_ppo_default_config,
+        "mountain-car-sippo-default-config": mountain_car_sippo_default_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
