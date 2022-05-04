@@ -79,15 +79,20 @@ def get_normal_envs(cfg: Config):
 
     return env
 
+
 def make_mountain_car_assistant(cfg: Config) -> MountainCarAssistant:
-    return MountainCarAssistant(n_actions=1, heuristic_action = cfg.assistance.mountain_car_heuristic)
+    return MountainCarAssistant(
+        n_actions=1, heuristic_action=cfg.assistance.mountain_car_heuristic
+    )
+
 
 def make_assistant(cfg: Config) -> BaseAssistant:
     if "AUV" in cfg.env.name:
         return make_pid_assistant(cfg)
-    elif cfg.env.name == "MountainCarContinuous":
+    elif cfg.env.name == "MountainCarContinuous-v0":
         return make_mountain_car_assistant(cfg)
     raise ValueError(f"No assistant found for environment {cfg.env.name}!")
+
 
 def get_assisted_envs(cfg: Config):
     if cfg.train.num_envs > 1:
