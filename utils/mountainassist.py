@@ -23,13 +23,13 @@ class MountainCarAssistant(BaseAssistant):
         is_in_heuristic_zone = self._low <= pos <= self._high
         if not is_in_heuristic_zone:
             # Don't apply force/torque
-            return 0
+            return np.array([0])
 
         # If in heuristic zone, give action
         if vel >= 0:
-            return self.heuristic_action
+            return np.array([self.heuristic_action])
         else:
-            return -self.heuristic_action
+            return np.array([-self.heuristic_action])
 
     def _preprocess_observation(
         self, observation: np.ndarray
