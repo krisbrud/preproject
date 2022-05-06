@@ -104,6 +104,9 @@ def train():
 
     hyperparams = dataclasses.asdict(cfg.hyperparam)
     hyperparams["tensorboard_log"] = tensorboard_dir
+    if hyperparams["policy_kwargs"] is None:
+        # Don't pass optional parameter as None
+        del hyperparams["policy_kwargs"]
 
     # if cfg.mlflow_tracking_uri is None:
     #     # Try to look for AzureML workspace configuration in working directory and deduce MLFLow URI from there
