@@ -754,7 +754,7 @@ def sippo_weighted_path_follow_config2():
     cfg = _get_default_config()
     cfg.experiment.name = "sippo-weighted-path-follow2"
     cfg.env.name = "PathFollowAuv3D-v0"
-    cfg.train.learn_from_assistant_actions = True    
+    cfg.train.learn_from_assistant_actions = False    
 
     # Lower the learning rate
     cfg.hyperparam.learning_rate = 2.5e-4

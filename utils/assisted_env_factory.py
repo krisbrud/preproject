@@ -87,7 +87,7 @@ def make_mountain_car_assistant(cfg: Config) -> MountainCarAssistant:
 
 
 def make_assistant(cfg: Config) -> BaseAssistant:
-    if "AUV" in cfg.env.name:
+    if "auv" in cfg.env.name.lower():
         return make_pid_assistant(cfg)
     elif cfg.env.name == "MountainCarContinuous-v0":
         return make_mountain_car_assistant(cfg)
