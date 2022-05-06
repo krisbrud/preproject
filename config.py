@@ -746,6 +746,41 @@ def mountain_car_ppo_default_config():
 
     return cfg
 
+def sippo_weighted_path_follow_config2():
+    # Based on hyperparameters from Thomas Nakken Larsen
+    # https://github.com/ThomasNLarsen/gym-auv-3D/blob/master/train3d.py
+
+    # Train all actuators for 1m timesteps with SiPPO
+    cfg = _get_default_config()
+    cfg.experiment.name = "sippo-weighted-path-follow2"
+    cfg.env.name = "PathFollowAuv3D-v0"
+    cfg.train.learn_from_assistant_actions = True    
+
+    # Lower the learning rate
+    cfg.hyperparam.learning_rate = 2.5e-4
+    cfg.hyperparam.batch_size = 64
+    cfg.hyperparam.gamma = 0.99
+    cfg.hyperparam.ent_coef = 0.001
+
+    cfg.train.algorithm = "AssistedPPO"
+    cfg.train.total_timesteps = int(1e6)
+    cfg.train.num_envs = (
+        10  # More than one, so we use multiprocessing, but still easy to find
+    )
+    cfg.train.n_eval_episodes = (
+        100  # Just check that it doesn't crash, we don't care about it being many
+    )
+    cfg.assistance = AssistanceConfig(
+        mask_schedule=CheckpointSchedule(
+            {0: mask_rudder_only}, total_timesteps=cfg.train.total_timesteps
+        )
+    )
+    cfg.assistance.assistant_action_noise_std = 1e-5
+    cfg.assistance.assistant_available_probability = 0.2
+
+    return cfg
+
+
 
 def mountain_car_ppo_high_ent_config():
     cfg = _get_default_config()
@@ -922,6 +957,9 @@ def get_config() -> Config:
         "mountain-car-sippo-100k": mountain_car_sippo_100k_config,
         "mountain-car-ppo-high-ent": mountain_car_ppo_high_ent_config,
         "path-follow-fps-benchmark": ppo_path_follow_fps_benchmark_config,
+        "mountain-car-ppo-default-config": mountain_car_ppo_default_config,
+        "mountain-car-sippo-default-config": mountain_car_sippo_default_config,
+        "sippo-weighted-path-follow2": sippo_weighted_path_follow_config2,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(

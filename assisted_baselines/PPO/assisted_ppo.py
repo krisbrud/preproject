@@ -301,9 +301,6 @@ class AssistedPPO(OnPolicyAlgorithm):
                     actions = rollout_data.actions.long().flatten()
 
                 is_agent_chosen = rollout_data.is_agent_chosen[:, 0]
-                # Re-sample the noise matrix because the log_std has changed
-                # if self.use_sde:
-                #     self.policy.reset_noise(self.batch_size)
 
                 (
                     values,
@@ -311,24 +308,12 @@ class AssistedPPO(OnPolicyAlgorithm):
                     entropy,
                     assistant_values,
                 ) = self.policy.evaluate_actions(rollout_data.observations, actions)
-                # values, log_prob, entropy = self.policy.evaluate_masked_actions(
-                #     rollout_data.observations, actions
-                # )
-
-                # assert isinstance(self.policy, AssistedActorCriticPolicy)
-                # (
-                #     agent_values,
-                #     assistant_values,
-                # ) = self.policy.predict_agent_and_expert_values(
-                #     rollout_data.observations
-                # )
 
                 values = values.flatten()
                 assistant_values = assistant_values.flatten()
                 is_agent_chosen = rollout_data.is_agent_chosen.flatten()
 
                 # Normalize advantage
-                # Only optimize over agent advantages
                 # learn_from_assistant_actions = False  # True  # False
 
                 if self.learn_from_assistant_actions:
@@ -357,7 +342,7 @@ class AssistedPPO(OnPolicyAlgorithm):
                     # Advantages are kept the same where agent action was taken.
                     advantages = advantages * advantage_weights
 
-                if self._first_rollout and first_batch:
+                if self._first_rollout and first_batch and False:
                     first_batch = False
                     print("batch size", self.batch_size)
 
@@ -522,10 +507,6 @@ class AssistedPPO(OnPolicyAlgorithm):
         callback.on_rollout_start()
         assistance_rates = []
 
-        print("collect rollouts")
-        first_step = True
-
-        # assistance_only = True
 
         # print(f"type {type(self.env)}")
         if isinstance(self.env, VecEnv):
@@ -561,7 +542,7 @@ class AssistedPPO(OnPolicyAlgorithm):
                 )
 
             # if self.assistant_exploit_mode:
-            with th.no_grad():
+            # with th.no_grad():
                 # Compare agent and assistant values
                 # We slice the tensor to avoid an unnecessary dimension at the end. TODO
                 is_agent_better_pred = th.gt(agent_values, assistant_values).cpu()
@@ -599,99 +580,21 @@ class AssistedPPO(OnPolicyAlgorithm):
                     ),
                 )
 
-                # TODO Clip the assistant's actions
-                # clipped_assistant_actions = noisy_assistant_actions
-                # Clip the actions to avoid out of bound error
-                # if isinstance(self.action_space, gym.spaces.Box):
-                #     clipped_assistant_actions = np.clip(
-                #         noisy_assistant_actions,
-                #         self.action_space.low,
-                #         self.action_space.high,
-                #     )
-                max_assistant_action = th.tensor(
-                    [0.7] * len(self.env.action_space.high)
-                )  # Don't allow the assistant to accelerate much
-                min_assistant_action = -max_assistant_action
-                clipped_assistant_actions = th.clamp(
-                    assistant_actions,
-                    min=min_assistant_action,
-                    max=max_assistant_action,
-                )  #  *= 0.8
-                noisy_assistant_actions = (
-                    clipped_assistant_actions + assistant_actions_noise
-                )
-
-                # TODO Remove: The assistant actions are too extreme - reduce the amplitude
-
-                # if first_step and False:
-                # print("agent values", agent_values)
-                # print("assistant values", assistant_values)
-                # print("is agent chosen", is_agent_chosen)
-                # print("is agent chosen size", is_agent_chosen.size())
-                # print("assistance rate", assistance_rate)
-                # print("agent actions", agent_actions)
-                # print("assistant actions", noisy_assistant_actions)
-                # first_step = False
-
                 rollout_agent_actions.append(agent_actions.numpy())
-                rollout_assistant_actions.append(noisy_assistant_actions.numpy())
+                rollout_assistant_actions.append(assistant_actions.numpy())
+
+                # rollout_assistant_actions.append(noisy_assistant_actions.numpy())
 
                 actions = (
-                    th.where(is_agent_chosen, agent_actions, noisy_assistant_actions)
+                    th.where(is_agent_chosen, agent_actions, assistant_actions)
                     .cpu()
                     .numpy()
                 )
 
-                # # TODO REMOVE - made for debugging how only assistant performs
-                # actions = noisy_assistant_actions.numpy()
-            # else:
-            #     assistance_rate = 0
-            #     is_agent_chosen = th.BoolTensor([[False * self.n_envs]])
-            #     actions = agent_actions.cpu().numpy()
-
-            # if assistance_only:
-            #     is_agent_chosen = th.BoolTensor([[True * self.n_envs]])
-
-            #     assistant_actions = self.env.env_method("get_assistant_action")
-            #     assistant_actions = (
-            #         th.from_numpy(
-            #             np.stack(assistant_actions, axis=0).astype(np.float32)
-            #         )
-            #         .cpu()
-            #         .numpy()
-            #     )
-            #     actions = assistant_actions
-
             assistance_rates.append(assistance_rate)
 
-            # with th.no_grad():
-            #     pass
-
-            # delete # assistant_action = self.env.get_assistant_action(agent_actions=agent_actions)
-
-            # agent_actions = agent_actions.cpu().numpy()
-
-            # print("agent actions dtype", agent_actions.dtype)
-            # print("assistant actions dtype", assistant_actions.dtype)
-
-            # Apply the mask to the actions
-            # actions = self.policy.current_mask.mix_np(
-            #     assistant_actions=assistant_actions, agent_actions=agent_actions
-            # )
-            # if assist...
-            # print("first step?", first_step)
-            # print("type agent act", type(agent_actions))
-            # print("type assistant act", type(assistant_actions))
-            # print("type is agent highest val", type(is_agent_chosen))
-            # print("type agent act", type(agent_actions))
-
-            # print("shape agent act", agent_actions.size())
-            # print("shape assistant act", assistant_actions.size())
-            # print("shape is agent highest val", is_agent_chosen.size())
-
             # Rescale and perform action
-            # clipped_actions = actions
-            clipped_actions = clipped_assistant_actions
+            clipped_actions = actions
             # Clip the actions to avoid out of bound error
             if isinstance(self.action_space, gym.spaces.Box):
                 clipped_actions = np.clip(
@@ -728,11 +631,6 @@ class AssistedPPO(OnPolicyAlgorithm):
                     with th.no_grad():
                         terminal_value = self.policy.predict_values(terminal_obs)[0]
                     rewards[idx] += self.gamma * terminal_value
-
-            # print("before adding to buffer...")
-            # print("type agent values", type(agent_values))
-            # print("type assistant values", type(assistant_values))
-            # print("type is agent highest val", type(is_agent_chosen))
 
             # TODO: Only if in exploit mode
             values = th.where(is_agent_chosen, agent_values, assistant_values)
