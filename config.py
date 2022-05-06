@@ -747,6 +747,36 @@ def mountain_car_ppo_default_config():
     return cfg
 
 
+def mountain_car_ppo_high_ent_config():
+    cfg = _get_default_config()
+
+    # Best hyperparameters according to
+    # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml
+
+    cfg.experiment.name = "mountain-car-ppo-high-ent"
+
+    cfg.env.name = "MountainCarContinuous-v0"
+
+    cfg.train.algorithm = "PPO"
+    cfg.train.total_timesteps = int(1e6)
+
+    cfg.train.num_envs = 10
+    cfg.hyperparam.n_steps = 2048
+    cfg.hyperparam.batch_size = 64
+    cfg.hyperparam.gamma = 0.99
+    cfg.hyperparam.learning_rate = 3e-4
+    cfg.hyperparam.ent_coef = 0.2
+    cfg.hyperparam.clip_range = 0.2
+    cfg.hyperparam.n_epochs = 10
+    cfg.hyperparam.gae_lambda = 0.9
+    cfg.hyperparam.max_grad_norm = 0.5
+    cfg.hyperparam.vf_coef = 0.5
+    cfg.hyperparam.use_sde = False
+    cfg.hyperparam.policy_kwargs = None
+
+    return cfg
+
+
 def mountain_car_sippo_default_config():
     cfg = _get_default_config()
 
@@ -779,6 +809,85 @@ def mountain_car_sippo_default_config():
     return cfg
 
 
+def mountain_car_sippo_100k_config() -> Config:
+    cfg = _get_default_config()
+
+    # Best hyperparameters according to
+    # https://github.com/DLR-RM/rl-baselines3-zoo/blob/master/hyperparams/ppo.yml
+
+    cfg.experiment.name = "mountain-car-sippo-100k"
+
+    cfg.env.name = "MountainCarContinuous-v0"
+
+    cfg.train.algorithm = "AssistedPPO"
+    cfg.train.total_timesteps = int(1e5)
+    cfg.train.learn_from_assistant_actions = True
+
+    cfg.train.num_envs = 10
+    cfg.hyperparam.n_steps = 2048
+    cfg.hyperparam.batch_size = 64
+    cfg.hyperparam.gamma = 0.99
+    cfg.hyperparam.learning_rate = 3e-4
+    cfg.hyperparam.ent_coef = 0.01
+    cfg.hyperparam.clip_range = 0.2
+    cfg.hyperparam.n_epochs = 10
+    cfg.hyperparam.gae_lambda = 0.9
+    cfg.hyperparam.max_grad_norm = 0.5
+    cfg.hyperparam.vf_coef = 0.5
+    cfg.hyperparam.use_sde = False
+    cfg.hyperparam.policy_kwargs = None
+
+    cfg.assistance.mountain_car_heuristic = 0.7
+
+    return cfg
+
+
+def mountain_car_ppo_debug_config() -> Config:
+    cfg = _get_default_config()
+
+    # Like mountain car ppo config, but with just one env and less timesteps
+
+    cfg.experiment.name = "mountain-car-ppo-debug"
+
+    cfg.env.name = "MountainCarContinuous-v0"
+
+    cfg.train.algorithm = "PPO"
+    cfg.train.total_timesteps = int(1e4)
+    cfg.train.num_envs = 1
+    cfg.train.n_eval_episodes = 1
+
+    # The rest are the same as default parameters
+    cfg.hyperparam.n_steps = 2048
+    cfg.hyperparam.batch_size = 64
+    cfg.hyperparam.gamma = 0.99
+    cfg.hyperparam.learning_rate = 3e-4
+    cfg.hyperparam.ent_coef = 0.01
+    cfg.hyperparam.clip_range = 0.2
+    cfg.hyperparam.n_epochs = 10
+    cfg.hyperparam.gae_lambda = 0.9
+    cfg.hyperparam.max_grad_norm = 0.5
+    cfg.hyperparam.vf_coef = 0.5
+    cfg.hyperparam.use_sde = False
+    cfg.hyperparam.policy_kwargs = None
+
+    return cfg
+
+
+def ppo_path_follow_fps_benchmark_config():
+    # Benchmark of frames per second of 100k timesteps in Path follow env
+    cfg = _get_default_config()
+
+    cfg.experiment.name = "path-follow-fps-benchmark"
+    cfg.train.algorithm = "PPO"
+    cfg.env.name = "PathFollowAuv3D-v0"
+    cfg.train.num_envs = 1  # Override via command line argument
+    cfg.train.total_timesteps = int(100e3)
+    cfg.train.save_freq = int(1e6)  # Deliberately skip saving model
+    cfg.train.n_eval_episodes = 0
+
+    return cfg
+
+
 def get_config() -> Config:
     """
     Parse the command line argument, pick the chosen config
@@ -807,8 +916,12 @@ def get_config() -> Config:
         "ppo-follow-larsen-hyperparam": ppo_follow_larsen_hyperparam_config,
         "sippo-weighted-more-noise-path-follow": sippo_weighted_more_noise_config,
         "mountain-car-ppo-baseline": mountain_car_ppo_baseline_config,
-        "mountain-car-ppo-default-config": mountain_car_ppo_default_config,
-        "mountain-car-sippo-default-config": mountain_car_sippo_default_config,
+        "mountain-car-ppo-default-param": mountain_car_ppo_default_config,
+        "mountain-car-sippo-default-param": mountain_car_sippo_default_config,
+        "mountain-car-ppo-debug": mountain_car_ppo_debug_config,
+        "mountain-car-sippo-100k": mountain_car_sippo_100k_config,
+        "mountain-car-ppo-high-ent": mountain_car_ppo_high_ent_config,
+        "path-follow-fps-benchmark": ppo_path_follow_fps_benchmark_config,
     }
     parser = argparse.ArgumentParser()
     parser.add_argument(
